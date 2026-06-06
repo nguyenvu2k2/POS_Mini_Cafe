@@ -1,0 +1,194 @@
+<div class="space-y-5">
+  <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+      <input
+        type="search"
+        [ngModel]="searchTerm"
+        (ngModelChange)="scheduleSearch($event)"
+        class="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+        placeholder="Tìm theo tên hoặc SĐT"
+        (keyup.enter)="searchCustomers()"
+      >
+      <button type="button" class="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark" (click)="searchCustomers()">
+        Tìm kiếm
+      </button>
+      <button type="button" class="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark" (click)="openCreateForm()">
+        Thêm
+      </button>
+    </div>
+  </section>
+
+  <div *ngIf="isLoading" class="flex justify-center rounded-lg border border-slate-200 bg-white py-16">
+    <app-loading-spinner label="Đang tải khách hàng"></app-loading-spinner>
+  </div>
+
+  <section *ngIf="!isLoading" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-5 py-3 text-left">Khách hàng</th>
+            <th class="px-5 py-3 text-left">SĐT</th>
+            <th class="px-5 py-3 text-left">Email</th>
+            <th class="px-5 py-3 text-right">Điểm loyalty</th>
+            <th class="px-5 py-3 text-right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let customer of customers" class="hover:bg-slate-50">
+            <td class="px-5 py-3 font-bold text-slate-900">{{ customer.name }}</td>
+            <td class="px-5 py-3 text-slate-600">{{ customer.phone || '-' }}</td>
+            <td class="px-5 py-3 text-slate-600">{{ customer.email || '-' }}</td>
+            <td class="px-5 py-3 text-right font-bold">{{ customer.loyalty_points }}</td>
+            <td class="px-5 py-3">
+              <div class="flex justify-end gap-2">
+                <button type="button" class="rounded-lg border border-primary px-3 py-1.5 text-xs font-bold text-primary hover:bg-blue-50" (click)="openEditForm(customer)">
+                  Sửa
+                </button>
+                <a [routerLink]="['/customers', customer.id]" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                  Chi tiết
+                </a>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <app-empty-state *ngIf="customers.length === 0" title="Không tìm thấy khách hàng" message="Thử nhập tên hoặc số điện thoại khác."></app-empty-state>
+  </section>
+
+  <div *ngIf="activeForm" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6 backdrop-blur-sm">
+    <section class="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-5 shadow-2xl">
+      <div class="mb-5">
+        <h2 class="mt-1 text-2xl font-bold text-slate-900">Thêm khách hàng</h2>
+      </div>
+
+      <form #createCustomerForm="ngForm" class="space-y-4" (ngSubmit)="createCustomer()">
+        <div>
+          <label for="customerName" class="mb-1.5 block text-sm font-semibold text-slate-700">Tên khách hàng</label>
+          <input
+            id="customerName"
+            name="customerName"
+            #customerNameModel="ngModel"
+            [(ngModel)]="newCustomer.name"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+            autocomplete="name"
+            required
+          >
+          <p *ngIf="customerNameModel.touched && customerNameModel.invalid" class="mt-1 text-xs text-red-600">Vui lòng nhập tên khách hàng.</p>
+        </div>
+
+        <div>
+          <label for="customerPhone" class="mb-1.5 block text-sm font-semibold text-slate-700">Số điện thoại</label>
+          <input
+            id="customerPhone"
+            name="customerPhone"
+            #customerPhoneModel="ngModel"
+            [(ngModel)]="newCustomer.phone"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+            autocomplete="tel"
+            required
+          >
+          <p *ngIf="customerPhoneModel.touched && customerPhoneModel.invalid" class="mt-1 text-xs text-red-600">Vui lòng nhập số điện thoại.</p>
+        </div>
+
+        <div>
+          <label for="customerEmail" class="mb-1.5 block text-sm font-semibold text-slate-700">Email</label>
+          <input
+            id="customerEmail"
+            name="customerEmail"
+            #customerEmailModel="ngModel"
+            type="email"
+            [(ngModel)]="newCustomer.email"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+            autocomplete="email"
+            email
+          >
+          <p *ngIf="customerEmailModel.touched && customerEmailModel.invalid" class="mt-1 text-xs text-red-600">Email không hợp lệ.</p>
+        </div>
+
+        <div>
+          <label for="customerNote" class="mb-1.5 block text-sm font-semibold text-slate-700">Ghi chú</label>
+          <input
+            id="customerNote"
+            name="customerNote"
+            [(ngModel)]="newCustomer.note"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+          >
+        </div>
+
+        <div class="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-70"
+            [disabled]="isCreating"
+            (click)="cancelCreateCustomer()"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            class="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:opacity-70"
+            [disabled]="isCreating || createCustomerForm.invalid"
+          >
+            <app-loading-spinner *ngIf="isCreating" size="sm"></app-loading-spinner>
+            Thêm
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div *ngIf="editingCustomer" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6 backdrop-blur-sm">
+    <section class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-2xl">
+      <div class="mb-5">
+        <p class="text-sm font-semibold uppercase text-slate-500">Khách hàng</p>
+        <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ editingCustomer.name }}</h2>
+      </div>
+
+      <form class="space-y-4" [formGroup]="editForm" (ngSubmit)="updateCustomer()">
+        <div>
+          <label for="editCustomerPhone" class="mb-1.5 block text-sm font-semibold text-slate-700">Số điện thoại</label>
+          <input
+            id="editCustomerPhone"
+            formControlName="phone"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+            autocomplete="tel"
+          >
+          <p *ngIf="editForm.controls.phone.touched && editForm.controls.phone.invalid" class="mt-1 text-xs text-red-600">Vui lòng nhập số điện thoại.</p>
+        </div>
+
+        <div>
+          <label for="editCustomerEmail" class="mb-1.5 block text-sm font-semibold text-slate-700">Email</label>
+          <input
+            id="editCustomerEmail"
+            type="email"
+            formControlName="email"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+            autocomplete="email"
+          >
+          <p *ngIf="editForm.controls.email.touched && editForm.controls.email.invalid" class="mt-1 text-xs text-red-600">Email không hợp lệ.</p>
+        </div>
+
+        <div class="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-70"
+            [disabled]="isUpdating"
+            (click)="cancelEditCustomer()"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            class="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:opacity-70"
+            [disabled]="isUpdating || editForm.invalid"
+          >
+            <app-loading-spinner *ngIf="isUpdating" size="sm"></app-loading-spinner>
+            Sửa
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>

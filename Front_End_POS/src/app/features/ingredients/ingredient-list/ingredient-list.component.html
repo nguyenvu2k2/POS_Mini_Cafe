@@ -1,0 +1,167 @@
+<div class="space-y-5">
+  <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase text-slate-500">Admin</p>
+        <h2 class="mt-1 text-2xl font-bold text-slate-900">Quản lý nguyên liệu</h2>
+      </div>
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+          <input type="checkbox" [(ngModel)]="lowOnly" class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" (change)="loadIngredients()">
+          Chỉ hiện hàng sắp hết
+        </label>
+        <button type="button" class="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-dark" (click)="openCreateForm()">
+          Thêm nguyên liệu
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <div *ngIf="isLoading" class="flex justify-center rounded-lg border border-slate-200 bg-white py-16">
+    <app-loading-spinner label="Đang tải nguyên liệu"></app-loading-spinner>
+  </div>
+
+  <section *ngIf="!isLoading" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-5 py-3 text-left">Tên nguyên liệu</th>
+            <th class="px-5 py-3 text-left">Đơn vị</th>
+            <th class="px-5 py-3 text-right">Tồn kho</th>
+            <th class="px-5 py-3 text-right">Tồn tối thiểu</th>
+            <th class="px-5 py-3 text-center">Trạng thái</th>
+            <th class="px-5 py-3 text-right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let ingredient of ingredients" [ngClass]="rowClass(ingredient)">
+            <td class="px-5 py-3 font-bold text-slate-900">{{ ingredient.name }}</td>
+            <td class="px-5 py-3 text-slate-600">{{ ingredient.unit }}</td>
+            <td class="px-5 py-3 text-right font-bold">{{ ingredient.stock }}</td>
+            <td class="px-5 py-3 text-right text-slate-600">{{ ingredient.min_stock }}</td>
+            <td class="px-5 py-3 text-center">
+              <app-badge
+                [status]="!ingredient.is_active ? 'inactive' : ingredientService.isLowStock(ingredient) ? 'low' : 'ok'"
+                [label]="!ingredient.is_active ? 'Đã ẩn' : ingredientService.isLowStock(ingredient) ? 'Sắp hết' : 'Ổn định'"
+              ></app-badge>
+            </td>
+            <td class="px-5 py-3">
+              <div class="flex justify-end gap-2">
+                <button
+                  type="button"
+                  class="rounded-lg border border-primary px-3 py-1.5 text-xs font-bold text-primary hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 disabled:opacity-60 disabled:hover:bg-transparent"
+                  [disabled]="!ingredient.is_active"
+                  (click)="openAction('import', ingredient)"
+                >
+                  Nhập kho
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:opacity-60 disabled:hover:bg-transparent"
+                  [disabled]="!ingredient.is_active"
+                  (click)="openAction('adjust', ingredient)"
+                >
+                  Điều chỉnh
+                </button>
+                <button type="button" class="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-bold text-primary hover:bg-blue-50" (click)="toggleActive(ingredient)">
+                  {{ ingredient.is_active ? 'Ẩn' : 'Hiện' }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <app-empty-state *ngIf="ingredients.length === 0" title="Không có nguyên liệu" message="Không có nguyên liệu phù hợp với bộ lọc hiện tại."></app-empty-state>
+  </section>
+</div>
+
+<div *ngIf="activeForm" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6 backdrop-blur-sm">
+  <section class="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-5 shadow-2xl">
+    <div class="mb-5">
+      <h2 class="mt-1 text-2xl font-bold text-slate-900">Thêm nguyên liệu</h2>
+    </div>
+
+    <form class="space-y-4" [formGroup]="form" (ngSubmit)="createIngredient()">
+      <div>
+        <label for="ingredientName" class="mb-1.5 block text-sm font-semibold text-slate-700">Tên nguyên liệu</label>
+        <input id="ingredientName" formControlName="name" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100" autocomplete="off">
+        <p *ngIf="form.controls.name.touched && form.controls.name.invalid" class="mt-1 text-xs text-red-600">Vui lòng nhập tên nguyên liệu.</p>
+      </div>
+
+      <div>
+        <label for="ingredientUnit" class="mb-1.5 block text-sm font-semibold text-slate-700">Đơn vị</label>
+        <input id="ingredientUnit" formControlName="unit" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100" autocomplete="off">
+        <p *ngIf="form.controls.unit.touched && form.controls.unit.invalid" class="mt-1 text-xs text-red-600">Vui lòng nhập đơn vị.</p>
+      </div>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label for="ingredientStock" class="mb-1.5 block text-sm font-semibold text-slate-700">Tồn kho ban đầu</label>
+          <input id="ingredientStock" type="number" min="0" step="0.001" formControlName="stock_quantity" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100">
+          <p *ngIf="form.controls.stock_quantity.touched && form.controls.stock_quantity.invalid" class="mt-1 text-xs text-red-600">Tồn kho không được âm.</p>
+        </div>
+
+        <div>
+          <label for="ingredientMinStock" class="mb-1.5 block text-sm font-semibold text-slate-700">Tồn tối thiểu</label>
+          <input id="ingredientMinStock" type="number" min="0" step="0.001" formControlName="min_stock" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100">
+          <p *ngIf="form.controls.min_stock.touched && form.controls.min_stock.invalid" class="mt-1 text-xs text-red-600">Tồn tối thiểu không được âm.</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-70"
+          [disabled]="isCreating"
+          (click)="cancelCreateIngredient()"
+        >
+          Hủy
+        </button>
+        <button
+          type="submit"
+          class="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:opacity-70"
+          [disabled]="isCreating || form.invalid"
+        >
+          <app-loading-spinner *ngIf="isCreating" size="sm"></app-loading-spinner>
+          Thêm
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<app-modal [open]="!!action" [title]="action === 'import' ? 'Nhập kho' : 'Điều chỉnh tồn kho'" (close)="closeAction()">
+  <div *ngIf="selectedIngredient" class="space-y-4">
+    <div class="rounded-lg bg-slate-50 p-3">
+      <p class="text-sm font-semibold text-slate-900">{{ selectedIngredient.name }}</p>
+      <p class="text-xs text-slate-500">Tồn hiện tại: {{ selectedIngredient.stock }} {{ selectedIngredient.unit }}</p>
+    </div>
+
+    <div>
+      <label for="quantity" class="mb-1.5 block text-sm font-semibold text-slate-700">
+        {{ action === 'import' ? 'Số lượng nhập' : 'Số lượng thực tế' }}
+      </label>
+      <input id="quantity" type="number" min="0" [(ngModel)]="quantity" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100">
+    </div>
+
+    <div *ngIf="action === 'adjust'">
+      <label for="adjustUnit" class="mb-1.5 block text-sm font-semibold text-slate-700">Đơn vị tính</label>
+      <input id="adjustUnit" [(ngModel)]="unit" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100" autocomplete="off">
+      <p *ngIf="!unit.trim()" class="mt-1 text-xs text-red-600">Vui lòng nhập đơn vị tính.</p>
+    </div>
+
+    <div>
+      <label for="note" class="mb-1.5 block text-sm font-semibold text-slate-700">Ghi chú</label>
+      <textarea id="note" rows="3" [(ngModel)]="note" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"></textarea>
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button type="button" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50" (click)="closeAction()">Hủy</button>
+      <button type="button" class="rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:opacity-70" [disabled]="isSaving || quantity < 0 || (action === 'adjust' && !unit.trim())" (click)="submitAction()">
+        Lưu
+      </button>
+    </div>
+  </div>
+</app-modal>

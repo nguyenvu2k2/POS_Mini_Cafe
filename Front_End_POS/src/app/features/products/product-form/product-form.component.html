@@ -1,0 +1,135 @@
+<div class="mx-auto max-w-5xl space-y-5">
+  <a routerLink="/products" class="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary-dark">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+    Quay lại sản phẩm
+  </a>
+
+  <form class="grid gap-5 xl:grid-cols-[1fr_320px]" [formGroup]="form" (ngSubmit)="submit()">
+    <section class="space-y-5">
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-900">{{ productId ? 'Sửa sản phẩm' : 'Thêm sản phẩm' }}</h2>
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          <div class="md:col-span-2">
+            <label for="name" class="mb-1.5 block text-sm font-semibold text-slate-700">Tên sản phẩm</label>
+            <input id="name" formControlName="name" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100">
+            <p *ngIf="form.controls.name.touched && form.controls.name.invalid" class="mt-1 text-xs font-medium text-red-600">Tên sản phẩm không được bỏ trống.</p>
+          </div>
+
+          <div>
+            <label for="category" class="mb-1.5 block text-sm font-semibold text-slate-700">Danh mục</label>
+            <select id="category" formControlName="category_id" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary">
+              <option *ngFor="let category of categories" [ngValue]="category.id">{{ category.name }}</option>
+            </select>
+          </div>
+
+          <label class="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5">
+            <input type="checkbox" formControlName="is_active" class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary">
+            <span class="text-sm font-semibold text-slate-700">Đang bán</span>
+          </label>
+
+          <div class="md:col-span-2">
+            <label for="description" class="mb-1.5 block text-sm font-semibold text-slate-700">Mô tả</label>
+            <textarea id="description" rows="4" formControlName="description" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-base font-bold text-slate-900">Biến thể</h3>
+          <button type="button" class="rounded-lg border border-primary px-3 py-2 text-sm font-bold text-primary hover:bg-blue-50" (click)="addVariant()">
+            Thêm biến thể
+          </button>
+        </div>
+
+        <div class="mt-4 space-y-4" formArrayName="variants">
+          <div *ngFor="let variant of variants.controls; let i = index" [formGroupName]="i" class="rounded-lg border border-slate-200">
+            <div class="grid gap-3 p-4 md:grid-cols-[1fr_160px_120px_auto] md:items-start">
+              <div>
+                <label class="mb-1.5 block text-xs font-bold uppercase text-slate-500">Tên biến thể</label>
+                <input formControlName="name" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+              </div>
+              <div>
+                <label class="mb-1.5 block text-xs font-bold uppercase text-slate-500">Giá</label>
+                <input type="number" formControlName="price" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-primary">
+                <p *ngIf="variantControl(i, 'price')?.touched && variantControl(i, 'price')?.invalid" class="mt-1 text-right text-xs text-red-600">Giá phải lớn hơn 0.</p>
+              </div>
+              <label class="mt-5 flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
+                <input type="checkbox" formControlName="is_available" class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary">
+                Có bán
+              </label>
+              <button type="button" class="mt-5 rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50" (click)="removeVariant(i)">
+                Xóa
+              </button>
+            </div>
+
+            <div class="border-t border-slate-200 bg-slate-50/60 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <h4 class="text-sm font-bold text-slate-900">Công thức nguyên liệu</h4>
+                <button type="button" class="rounded-lg border border-primary px-3 py-1.5 text-xs font-bold text-primary hover:bg-blue-50" (click)="addRecipe(i)">
+                  Thêm nguyên liệu
+                </button>
+              </div>
+
+              <div class="mt-3 space-y-2" formArrayName="recipes">
+                <div *ngFor="let recipe of variantRecipes(i).controls; let j = index" [formGroupName]="j" class="grid gap-2 md:grid-cols-[1fr_140px_70px_auto] md:items-start">
+                  <div>
+                    <select formControlName="ingredient_id" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+                      <option [ngValue]="null">Chọn nguyên liệu</option>
+                      <option *ngFor="let ingredient of activeIngredients" [ngValue]="ingredient.id">{{ ingredient.name }}</option>
+                      <option *ngIf="isRecipeIngredientHidden(i, j)" [ngValue]="selectedRecipeIngredient(i, j)?.id" disabled>
+                        {{ selectedRecipeIngredient(i, j)?.name }} (đã ẩn)
+                      </option>
+                    </select>
+                    <p *ngIf="recipeControl(i, j, 'ingredient_id')?.touched && recipeControl(i, j, 'ingredient_id')?.invalid" class="mt-1 text-xs text-red-600">Chọn nguyên liệu.</p>
+                    <p *ngIf="isRecipeIngredientHidden(i, j)" class="mt-1 text-xs font-medium text-amber-700">
+                      Nguyên liệu này đã ẩn. Vui lòng điều chỉnh, không được để trống nguyên liệu.
+                    </p>
+                  </div>
+                  <div>
+                    <input type="number" min="0.001" step="0.001" formControlName="quantity_required" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-primary">
+                    <p *ngIf="recipeControl(i, j, 'quantity_required')?.touched && recipeControl(i, j, 'quantity_required')?.invalid" class="mt-1 text-xs text-red-600">Định lượng phải lớn hơn 0.</p>
+                  </div>
+                  <p class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center text-sm font-semibold text-slate-600">
+                    {{ ingredientUnit(recipeControl(i, j, 'ingredient_id')?.value) || '-' }}
+                  </p>
+                  <button type="button" class="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50" (click)="removeRecipe(i, j)">
+                    Xóa
+                  </button>
+                </div>
+              </div>
+
+              <p *ngIf="variantControl(i, 'is_available')?.value && variantRecipes(i).length === 0" class="mt-2 text-xs font-medium text-red-600">
+                Biến thể đang bán cần có công thức nguyên liệu.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="space-y-5">
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-bold text-slate-900">Ảnh sản phẩm</h3>
+        <div class="mt-4 aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
+          <img *ngIf="previewUrl || form.value.image_url" [src]="previewUrl || form.value.image_url" alt="Preview" class="h-full w-full object-cover">
+        </div>
+        <input type="file" accept="image/*" class="mt-4 w-full text-sm text-slate-600" (change)="onFileSelected($event)">
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex gap-3">
+          <a routerLink="/products" class="flex-1 rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-bold text-slate-700 hover:bg-slate-50">
+            Hủy
+          </a>
+          <button type="submit" class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:opacity-70" [disabled]="isSaving">
+            <app-loading-spinner *ngIf="isSaving" size="sm"></app-loading-spinner>
+            Lưu
+          </button>
+        </div>
+      </div>
+    </aside>
+  </form>
+</div>

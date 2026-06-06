@@ -1,0 +1,284 @@
+<div class="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
+  <section class="min-w-0 space-y-4">
+    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div class="min-w-0 flex-1">
+          <label for="product-search" class="sr-only">Tìm sản phẩm</label>
+          <div class="relative">
+            <svg class="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 110-15 7.5 7.5 0 010 15z" />
+            </svg>
+            <input
+              id="product-search"
+              type="search"
+              [(ngModel)]="searchTerm"
+              class="w-full rounded-lg border border-slate-300 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-blue-100"
+              placeholder="Tìm món theo tên"
+            >
+          </div>
+        </div>
+        <div class="flex gap-2 overflow-x-auto pb-1 lg:pb-0">
+          <button
+            type="button"
+            class="whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold transition"
+            [ngClass]="selectedCategoryId === 'all' ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 text-slate-600 hover:border-primary hover:text-primary'"
+            (click)="selectedCategoryId = 'all'"
+          >
+            Tất cả
+          </button>
+          <button
+            *ngFor="let category of categories"
+            type="button"
+            class="whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold transition"
+            [ngClass]="selectedCategoryId === category.id ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 text-slate-600 hover:border-primary hover:text-primary'"
+            (click)="selectedCategoryId = category.id"
+          >
+            {{ category.name }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="flex justify-center rounded-lg border border-slate-200 bg-white py-16">
+      <app-loading-spinner label="Đang tải sản phẩm"></app-loading-spinner>
+    </div>
+
+    <div *ngIf="!isLoading && filteredProducts.length" class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+      <article
+        *ngFor="let product of filteredProducts"
+        class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm transition"
+        [ngClass]="product.is_out_of_stock || productHasHiddenIngredients(product) || selectedVariantMissingRecipe(product) ? 'opacity-55 grayscale' : 'hover:-translate-y-0.5 hover:shadow-md'"
+      >
+        <div class="aspect-[4/3] overflow-hidden bg-slate-100">
+          <img [src]="product.image_url" [alt]="product.name" class="h-full w-full object-cover">
+        </div>
+        <div class="space-y-3 p-4">
+          <div>
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="min-w-0 text-base font-bold text-slate-900">{{ product.name }}</h3>
+              <span *ngIf="product.is_out_of_stock" class="rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-700">Hết</span>
+              <span *ngIf="!product.is_out_of_stock && selectedVariantMissingRecipe(product)" class="rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-700">Chưa có công thức</span>
+              <span *ngIf="!product.is_out_of_stock && productHasHiddenIngredients(product)" class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Cần chỉnh</span>
+            </div>
+            <p class="mt-1 line-clamp-2 text-sm text-slate-500">{{ product.description }}</p>
+            <p *ngIf="selectedVariantMissingRecipe(product)" class="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-semibold text-red-700">
+              Biến thể đã chọn chưa có công thức nguyên liệu. Không thể bán món này.
+            </p>
+            <p *ngIf="productHasHiddenIngredients(product)" class="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-xs font-semibold text-amber-700">
+              Công thức có nguyên liệu đã ẩn: {{ hiddenIngredientNames(product) }}. Không thể thêm vào đơn hàng.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select
+              class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary"
+              [(ngModel)]="selectedVariantIds[product.id]"
+              [disabled]="product.is_out_of_stock || productHasHiddenIngredients(product)"
+            >
+              <option *ngFor="let variant of product.variants" [ngValue]="variant.id" [disabled]="!variant.is_available || !variantHasRecipe(variant)">
+                {{ variant.name }} - {{ variant.price | currencyVn }}
+                {{ !variantHasRecipe(variant) ? ' - chưa có công thức' : '' }}
+              </option>
+            </select>
+            <button
+              type="button"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-300"
+              [disabled]="!canAddProduct(product)"
+              (click)="addToCart(product)"
+              aria-label="Thêm món"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <app-empty-state *ngIf="!isLoading && !filteredProducts.length" title="Khong tim thay mon" message="Thu doi tu khoa tim kiem hoac danh muc."></app-empty-state>
+  </section>
+
+  <aside class="space-y-4 xl:sticky xl:top-24 xl:self-start">
+    <div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-200 px-4 py-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-slate-900">Giỏ hàng</h2>
+          <span class="text-sm font-semibold text-slate-500">{{ cartItems.length }} món</span>
+        </div>
+      </div>
+
+      <div class="space-y-3 p-4">
+        <div class="flex gap-2">
+          <input
+            type="tel"
+            appOnlyNumber
+            [(ngModel)]="customerPhone"
+            class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+            placeholder="SĐT khách hàng"
+          >
+          <button
+            type="button"
+            class="rounded-lg border border-primary px-3 py-2 text-sm font-bold text-primary hover:bg-blue-50"
+            (click)="searchCustomer()"
+          >
+            Tìm kiếm
+          </button>
+        </div>
+        <p *ngIf="selectedCustomer" class="rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
+          {{ selectedCustomer.name }} - {{ selectedCustomer.loyalty_points }} điểm
+        </p>
+      </div>
+
+      <div class="max-h-[42vh] space-y-3 overflow-y-auto border-y border-slate-200 p-4">
+        <app-empty-state *ngIf="!cartItems.length" title="Giỏ hàng trong" message="Bấm nút cộng trên món để thêm vào đơn."></app-empty-state>
+
+        <div *ngFor="let item of cartItems" class="rounded-lg border border-slate-200 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-bold text-slate-900">{{ item.product.name }}</p>
+              <p class="text-sm text-slate-500">{{ item.variant.name }} - {{ item.variant.price | currencyVn }}</p>
+            </div>
+            <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" aria-label="Xoa mon" (click)="remove(item)">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="mt-3 flex items-center justify-between gap-3">
+            <div class="flex items-center rounded-lg border border-slate-200">
+              <button type="button" class="h-9 w-9 text-slate-600 hover:bg-slate-50" (click)="decrease(item)">-</button>
+              <span class="flex h-9 w-10 items-center justify-center text-sm font-bold">{{ item.quantity }}</span>
+              <button type="button" class="h-9 w-9 text-slate-600 hover:bg-slate-50" (click)="increase(item)">+</button>
+            </div>
+            <p class="font-bold text-slate-900">{{ item.quantity * item.variant.price | currencyVn }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-4 p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-sm font-semibold text-slate-500">Tổng tiền</span>
+          <strong class="text-2xl font800 font-bold text-slate-900">{{ totalAmount | currencyVn }}</strong>
+        </div>
+        <button
+          type="button"
+          class="w-full rounded-lg bg-green-600 px-4 py-3 text-base font-bold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          [disabled]="!cartItems.length"
+          (click)="openPaymentModal()"
+        >
+          Tạo hóa đơn và thanh toán
+        </button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<app-modal [open]="isPaymentModalOpen" title="Thanh toán hóa đơn" (close)="isPaymentModalOpen = false">
+  <div class="space-y-5">
+    <div class="rounded-lg bg-blue-50 p-4">
+      <p class="text-sm font-semibold text-blue-700">Tổng cần trả</p>
+      <p class="mt-1 text-3xl font-bold text-primary">{{ totalAmount | currencyVn }}</p>
+    </div>
+
+    <div>
+      <p class="mb-2 text-sm font-semibold text-slate-700">Phương thức thanh toán</p>
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          *ngFor="let method of paymentMethods"
+          type="button"
+          class="rounded-lg border px-3 py-2 text-sm font-bold transition"
+          [ngClass]="paymentMethod === method.value ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 text-slate-600 hover:border-primary'"
+          (click)="selectPaymentMethod(method.value)"
+        >
+          {{ method.label }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="paymentMethod === 'cash'">
+      <label for="receivedAmount" class="mb-1.5 block text-sm font-semibold text-slate-700">Tiền khách đưa</label>
+      <input
+        id="receivedAmount"
+        type="number"
+        min="0"
+        [(ngModel)]="receivedAmount"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+      >
+      <p class="mt-2 text-sm font-semibold text-slate-700">Tiền thừa: <span class="text-green-700">{{ changeAmount | currencyVn }}</span></p>
+    </div>
+
+    <div *ngIf="paymentMethod === 'momo'" class="rounded-lg border border-pink-200 bg-pink-50 p-4">
+      <div
+        class="mx-auto grid h-44 w-44 gap-0.5 rounded-lg border border-pink-100 bg-white p-2 shadow-inner"
+        [style.gridTemplateColumns]="'repeat(' + momoQrPattern.length + ', minmax(0, 1fr))'"
+        aria-label="Ma QR thanh toan MoMo"
+      >
+        <ng-container *ngFor="let row of momoQrPattern">
+          <span *ngFor="let cell of row" class="rounded-[1px]" [ngClass]="cell ? 'bg-slate-950' : 'bg-white'"></span>
+        </ng-container>
+      </div>
+      <div class="mt-4 rounded-lg bg-white px-3 py-3 text-sm">
+        <div class="flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">Nguoi nhan</span>
+          <span class="font-bold text-slate-900">{{ momoReceiverName }}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">So MoMo</span>
+          <span class="font-bold text-slate-900">{{ momoReceiverPhone }}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">So tien</span>
+          <span class="font-bold text-pink-700">{{ totalAmount | currencyVn }}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">Noi dung</span>
+          <span class="font-bold text-slate-900">{{ momoPaymentNote }}</span>
+        </div>
+      </div>
+      <p class="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-pink-700">
+        Sau khi tiền vào ví MoMo {{ momoReceiverPhone }}, bấm Đã nhận tiền MoMo để xác nhận thanh toán.
+      </p>
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button type="button" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50" (click)="isPaymentModalOpen = false">
+        Hủy
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isPaying"
+        (click)="confirmPayment()"
+      >
+        <app-loading-spinner *ngIf="isPaying" size="sm"></app-loading-spinner>
+        {{ paymentConfirmButtonLabel }}
+      </button>
+    </div>
+  </div>
+</app-modal>
+
+<app-modal [open]="isPrintInvoiceModalOpen" title="In hóa đơn" [showClose]="false" (close)="cancelPrintInvoice()">
+  <form [formGroup]="printInvoiceForm" class="space-y-5" (ngSubmit)="payAndPrintInvoice()">
+    <p class="text-base font-bold text-slate-900">{{ printInvoicePrompt }}</p>
+
+    <div class="flex justify-end gap-3">
+      <button
+        type="button"
+        class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isPaying"
+        (click)="cancelPrintInvoice()"
+      >
+        Hủy
+      </button>
+      <button
+        type="submit"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isPaying"
+      >
+        <app-loading-spinner *ngIf="isPaying" size="sm"></app-loading-spinner>
+        Ok
+      </button>
+    </div>
+  </form>
+</app-modal>

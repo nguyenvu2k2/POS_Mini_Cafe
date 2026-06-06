@@ -1,0 +1,235 @@
+<div class="space-y-5">
+  <a routerLink="/orders" class="inline-flex items-center gap-2 text-sm font-bold text-primary hover:text-primary-dark">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+    Quay lại danh sách
+  </a>
+
+  <div *ngIf="isLoading" class="flex justify-center rounded-lg border border-slate-200 bg-white py-16">
+    <app-loading-spinner label="Đang tải chi tiết đơn"></app-loading-spinner>
+  </div>
+
+  <section *ngIf="!isLoading && order" class="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+    <div class="space-y-5">
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm font-semibold text-slate-500">Ma don</p>
+            <h2 class="mt-1 text-2xl font-bold text-slate-900">{{ order.code }}</h2>
+          </div>
+          <app-badge [status]="order.status"></app-badge>
+        </div>
+        <div class="mt-5 grid gap-4 sm:grid-cols-3">
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Khách hàng</p>
+            <p class="mt-1 font-semibold text-slate-900">{{ order.customer?.name || 'Khách lẻ' }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Nhân viên</p>
+            <p class="mt-1 font-semibold text-slate-900">{{ order.user?.full_name || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-xs font-bold uppercase text-slate-500">Thời gian</p>
+            <p class="mt-1 font-semibold text-slate-900">{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-200 px-5 py-4">
+          <h3 class="text-base font-bold text-slate-900">Món đã gọi</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th class="px-5 py-3 text-left">Món</th>
+                <th class="px-5 py-3 text-center">Số lượng</th>
+                <th class="px-5 py-3 text-right">Đơn giá</th>
+                <th class="px-5 py-3 text-right">Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr *ngFor="let item of order.order_items">
+                <td class="px-5 py-3">
+                  <p class="font-semibold text-slate-900">{{ item.product_name }}</p>
+                  <p class="text-xs text-slate-500">{{ item.variant_name }}</p>
+                </td>
+                <td class="px-5 py-3 text-center">{{ item.quantity }}</td>
+                <td class="px-5 py-3 text-right">{{ item.unit_price | currencyVn }}</td>
+                <td class="px-5 py-3 text-right font-bold">{{ item.subtotal | currencyVn }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <aside class="space-y-5">
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-bold text-slate-900">Thanh toán</h3>
+        <div class="mt-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-500">Tổng tiền</span>
+            <strong class="text-2xl font-bold text-slate-900">{{ order.total_amount | currencyVn }}</strong>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-500">Đã thanh toán</span>
+            <span class="font-bold text-green-700">{{ paidAmount | currencyVn }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-slate-500">Còn lại</span>
+            <span class="font-bold text-red-700">{{ remainingAmount | currencyVn }}</span>
+          </div>
+          <div *ngFor="let payment of order.payments" class="rounded-lg bg-slate-50 px-3 py-2 text-sm">
+            <div class="flex justify-between gap-3">
+              <span class="font-semibold text-slate-700">{{ payment.method }}</span>
+              <span class="font-bold">{{ payment.amount | currencyVn }}</span>
+            </div>
+            <p class="mt-1 text-xs text-slate-500">{{ payment.paid_at | date:'dd/MM/yyyy HH:mm' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="text-base font-bold text-slate-900">Thao tac</h3>
+        <div class="mt-4 space-y-2">
+          <button
+            *ngIf="nextStatus"
+            type="button"
+            class="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark"
+            (click)="moveNext()"
+          >
+            Chuyển sang {{ nextStatus | orderStatus }}
+          </button>
+          <button
+            *ngIf="canPay()"
+            type="button"
+            class="w-full rounded-lg bg-green-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-green-700"
+            (click)="openPaymentModal()"
+          >
+            Thanh toán đơn
+          </button>
+          <button
+            *ngIf="canCancel()"
+            type="button"
+            class="w-full rounded-lg border border-red-200 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50"
+            (click)="cancel()"
+          >
+           Hủy đơn
+          </button>
+        </div>
+      </div>
+    </aside>
+  </section>
+</div>
+
+<app-modal [open]="isPaymentModalOpen" title="Thanh toan don hang" (close)="isPaymentModalOpen = false">
+  <div class="space-y-5">
+    <div class="rounded-lg bg-blue-50 p-4">
+      <p class="text-sm font-semibold text-blue-700">Còn cần trả</p>
+      <p class="mt-1 text-3xl font-bold text-primary">{{ remainingAmount | currencyVn }}</p>
+    </div>
+
+    <div>
+      <p class="mb-2 text-sm font-semibold text-slate-700">Phương thức thanh toán</p>
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          *ngFor="let method of paymentMethods"
+          type="button"
+          class="rounded-lg border px-3 py-2 text-sm font-bold transition"
+          [ngClass]="paymentMethod === method.value ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 text-slate-600 hover:border-primary'"
+          (click)="selectPaymentMethod(method.value)"
+        >
+          {{ method.label }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="paymentMethod === 'cash'">
+      <label for="receivedAmount" class="mb-1.5 block text-sm font-semibold text-slate-700">Tien khach dua</label>
+      <input
+        id="receivedAmount"
+        type="number"
+        min="0"
+        [(ngModel)]="receivedAmount"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-blue-100"
+      >
+      <p class="mt-2 text-sm font-semibold text-slate-700">Tiền thừa: <span class="text-green-700">{{ changeAmount | currencyVn }}</span></p>
+    </div>
+
+    <div *ngIf="paymentMethod === 'momo'" class="rounded-lg border border-pink-200 bg-pink-50 p-4">
+      <div
+        class="mx-auto grid h-44 w-44 gap-0.5 rounded-lg border border-pink-100 bg-white p-2 shadow-inner"
+        [style.gridTemplateColumns]="'repeat(' + momoQrPattern.length + ', minmax(0, 1fr))'"
+        aria-label="Ma QR thanh toan MoMo"
+      >
+        <ng-container *ngFor="let row of momoQrPattern">
+          <span *ngFor="let cell of row" class="rounded-[1px]" [ngClass]="cell ? 'bg-slate-950' : 'bg-white'"></span>
+        </ng-container>
+      </div>
+      <div class="mt-4 rounded-lg bg-white px-3 py-3 text-sm">
+        <div class="flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">Nguoi nhan</span>
+          <span class="font-bold text-slate-900">{{ momoReceiverName }}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">So MoMo</span>
+          <span class="font-bold text-slate-900">{{ momoReceiverPhone }}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">So tien</span>
+          <span class="font-bold text-pink-700">{{ remainingAmount | currencyVn }}</span>
+        </div>
+        <div class="mt-2 flex items-center justify-between gap-3">
+          <span class="font-semibold text-slate-500">Noi dung</span>
+          <span class="font-bold text-slate-900">{{ momoPaymentNote }}</span>
+        </div>
+      </div>
+      <p class="mt-3 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-pink-700">
+        Sau khi tiền vào ví MoMo {{ momoReceiverPhone }}, bấm Đã nhận tiền MoMo để xác nhận thanh toán.
+      </p>
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button type="button" class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50" (click)="isPaymentModalOpen = false">
+      Hủy
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isPaying"
+        (click)="confirmPayment()"
+      >
+        <app-loading-spinner *ngIf="isPaying" size="sm"></app-loading-spinner>
+        {{ paymentConfirmButtonLabel }}
+      </button>
+    </div>
+  </div>
+</app-modal>
+
+<app-modal [open]="isPrintInvoiceModalOpen" title="In hóa đơn" [showClose]="false" (close)="cancelPrintInvoice()">
+  <form [formGroup]="printInvoiceForm" class="space-y-5" (ngSubmit)="payAndPrintInvoice()">
+    <p class="text-base font-bold text-slate-900">{{ printInvoicePrompt }}</p>
+
+    <div class="flex justify-end gap-3">
+      <button
+        type="button"
+        class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isPaying"
+        (click)="cancelPrintInvoice()"
+      >
+        Hủy
+      </button>
+      <button
+        type="submit"
+        class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isPaying"
+      >
+        <app-loading-spinner *ngIf="isPaying" size="sm"></app-loading-spinner>
+        Ok
+      </button>
+    </div>
+  </form>
+</app-modal>

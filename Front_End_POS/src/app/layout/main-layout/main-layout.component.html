@@ -1,0 +1,18 @@
+<div class="flex min-h-screen bg-slate-50">
+  <app-sidebar [isOpen]="isSidebarOpen" (close)="isSidebarOpen = false"></app-sidebar>
+
+  <button
+    *ngIf="isSidebarOpen"
+    type="button"
+    aria-label="Đóng menu"
+    class="fixed inset-0 z-30 bg-slate-950/40 lg:hidden"
+    (click)="isSidebarOpen = false"
+  ></button>
+
+  <div class="flex min-w-0 flex-1 flex-col">
+    <app-topbar (toggleSidebar)="isSidebarOpen = !isSidebarOpen"></app-topbar>
+    <main class="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,42 @@
+<aside
+  class="fixed inset-y-0 left-0 z-40 flex w-72 shrink-0 transform flex-col bg-primary text-white shadow-xl transition-transform duration-200 lg:static lg:translate-x-0"
+  [ngClass]="isOpen ? 'translate-x-0' : '-translate-x-full'"
+>
+  <div class="flex h-16 items-center justify-between border-b border-white/15 px-5">
+    <a routerLink="/dashboard" class="flex items-center gap-3" (click)="close.emit()">
+      <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-lg font-black text-primary">MC</span>
+      <span>
+        <span class="block text-sm font-semibold uppercase tracking-wide text-blue-100">POS Mini</span>
+        <span class="block text-lg font800 font-bold leading-tight">Cafe</span>
+      </span>
+    </a>
+    <button type="button" class="rounded-md p-2 text-blue-100 hover:bg-white/10 lg:hidden" aria-label="Đóng menu" (click)="close.emit()">
+      <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+    <a
+      *ngFor="let item of visibleItems"
+      [routerLink]="item.path"
+      routerLinkActive
+      #active="routerLinkActive"
+      [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+      class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-blue-50 transition hover:bg-white/10"
+      [ngClass]="active.isActive ? 'bg-white text-primary shadow-sm hover:bg-white' : ''"
+      (click)="close.emit()"
+    >
+      <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="item.iconPath" />
+      </svg>
+      <span>{{ item.label }}</span>
+    </a>
+  </nav>
+
+  <div class="border-t border-white/15 p-4 text-xs text-blue-100">
+    <p class="font-semibold text-white">Demo account</p>
+    <p class="mt-1">admin@mini.cafe / admin123</p>
+  </div>
+</aside>

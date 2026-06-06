@@ -1,0 +1,134 @@
+<div class="space-y-5">
+  <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase text-slate-500">Admin</p>
+        <h2 class="mt-1 text-2xl font-bold text-slate-900">Báo cáo vận hành</h2>
+      </div>
+      <nav class="flex gap-2 overflow-x-auto">
+        <a
+          *ngFor="let tab of tabs"
+          [routerLink]="tab.path"
+          class="whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-bold transition"
+          [ngClass]="activeTab === tab.value ? 'border-primary bg-blue-50 text-primary' : 'border-slate-200 text-slate-600 hover:border-primary'"
+        >
+          {{ tab.label }}
+        </a>
+      </nav>
+    </div>
+  </section>
+
+  <section *ngIf="activeTab === 'revenue'" class="space-y-5">
+    <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div class="grid gap-3 md:grid-cols-[1fr_1fr_220px_auto]">
+        <div>
+          <label for="fromDate" class="mb-1 block text-xs font-bold uppercase text-slate-500">Từ ngày</label>
+          <input id="fromDate" type="date" [(ngModel)]="fromDate" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+        </div>
+        <div>
+          <label for="toDate" class="mb-1 block text-xs font-bold uppercase text-slate-500">Đến ngày</label>
+          <input id="toDate" type="date" [(ngModel)]="toDate" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+        </div>
+        <div>
+          <label for="groupBy" class="mb-1 block text-xs font-bold uppercase text-slate-500">Nhóm theo</label>
+          <select id="groupBy" [(ngModel)]="groupBy" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+            <option value="day">Ngày</option>
+            <option value="week">Tuần</option>
+            <option value="month">Tháng</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button type="button" class="w-full rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-dark md:w-auto" (click)="loadRevenue()">
+            Cập nhật
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="flex justify-center rounded-lg border border-slate-200 bg-white py-16">
+      <app-loading-spinner label="Đang tải doanh thu"></app-loading-spinner>
+    </div>
+
+    <div *ngIf="!isLoading" class="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="h-80">
+          <canvas #revenueCanvas></canvas>
+        </div>
+      </div>
+      <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+            <tr>
+              <th class="px-4 py-3 text-left">Kỳ</th>
+              <th class="px-4 py-3 text-right">Số đơn</th>
+              <th class="px-4 py-3 text-right">Doanh thu</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr *ngFor="let item of revenueData">
+              <td class="px-4 py-3 font-semibold">{{ item.period }}</td>
+              <td class="px-4 py-3 text-right">{{ item.orderCount }}</td>
+              <td class="px-4 py-3 text-right font-bold">{{ item.revenue | currencyVn }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <app-empty-state *ngIf="revenueData.length === 0" title="Chưa có doanh thu" message="Khoảng thời gian này chưa có đơn hàng."></app-empty-state>
+      </div>
+    </div>
+  </section>
+
+  <section *ngIf="activeTab === 'top-products'" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div *ngIf="isLoading" class="flex justify-center py-16">
+      <app-loading-spinner label="Đang tải top sản phẩm"></app-loading-spinner>
+    </div>
+    <div *ngIf="!isLoading" class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-5 py-3 text-left">Hạng</th>
+            <th class="px-5 py-3 text-left">Sản phẩm</th>
+            <th class="px-5 py-3 text-left">Biến thể</th>
+            <th class="px-5 py-3 text-right">Số lượng bán</th>
+            <th class="px-5 py-3 text-right">Doanh thu</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let item of topProducts">
+            <td class="px-5 py-3 font-bold text-primary">#{{ item.rank }}</td>
+            <td class="px-5 py-3 font-bold text-slate-900">{{ item.productName }}</td>
+            <td class="px-5 py-3 text-slate-600">{{ item.variantName }}</td>
+            <td class="px-5 py-3 text-right">{{ item.quantity }}</td>
+            <td class="px-5 py-3 text-right font-bold">{{ item.revenue | currencyVn }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section *ngIf="activeTab === 'low-stock'" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div *ngIf="isLoading" class="flex justify-center py-16">
+      <app-loading-spinner label="Đang tải tồn kho"></app-loading-spinner>
+    </div>
+    <div *ngIf="!isLoading" class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-5 py-3 text-left">Nguyên liệu</th>
+            <th class="px-5 py-3 text-left">Đơn vị</th>
+            <th class="px-5 py-3 text-right">Tồn kho</th>
+            <th class="px-5 py-3 text-right">Tồn tối thiểu</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let ingredient of lowStockIngredients" class="bg-red-50">
+            <td class="px-5 py-3 font-bold text-slate-900">{{ ingredient.name }}</td>
+            <td class="px-5 py-3 text-slate-600">{{ ingredient.unit }}</td>
+            <td class="px-5 py-3 text-right font-bold text-red-700">{{ ingredient.stock }}</td>
+            <td class="px-5 py-3 text-right">{{ ingredient.min_stock }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <app-empty-state *ngIf="!isLoading && lowStockIngredients.length === 0" title="Kho ổn định" message="Không có nguyên liệu nào sắp hết."></app-empty-state>
+  </section>
+</div>

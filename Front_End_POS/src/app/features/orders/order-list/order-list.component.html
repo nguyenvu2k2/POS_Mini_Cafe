@@ -1,0 +1,81 @@
+<div class="space-y-5">
+  <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div class="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+      <div>
+        <label for="status" class="mb-1 block text-xs font-bold uppercase text-slate-500">Trạng thái</label>
+        <select id="status" [(ngModel)]="status" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+          <option *ngFor="let item of statuses" [ngValue]="item.value">{{ item.label }}</option>
+        </select>
+      </div>
+      <div>
+        <label for="fromDate" class="mb-1 block text-xs font-bold uppercase text-slate-500">Từ ngày</label>
+        <input id="fromDate" type="date" [(ngModel)]="fromDate" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+      </div>
+      <div>
+        <label for="toDate" class="mb-1 block text-xs font-bold uppercase text-slate-500">Đến ngày</label>
+        <input id="toDate" type="date" [(ngModel)]="toDate" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+      </div>
+      <div class="flex items-end">
+        <button type="button" class="w-full rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white hover:bg-primary-dark md:w-auto" (click)="applyFilter()">
+          Lọc
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <div *ngIf="isLoading" class="flex justify-center rounded-lg border border-slate-200 bg-white py-16">
+    <app-loading-spinner label="Đang tải đơn hàng"></app-loading-spinner>
+  </div>
+
+  <section *ngIf="!isLoading" class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-xs uppercase text-slate-500">
+          <tr>
+            <th class="px-4 py-3 text-left">Mã đơn</th>
+            <th class="px-4 py-3 text-left">Thời gian</th>
+            <th class="px-4 py-3 text-left">Nhân viên</th>
+            <th class="px-4 py-3 text-center">Số món</th>
+            <th class="px-4 py-3 text-right">Tổng tiền</th>
+            <th class="px-4 py-3 text-center">Trạng thái</th>
+            <th class="px-4 py-3 text-right">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr *ngFor="let order of pagedOrders" class="cursor-pointer hover:bg-slate-50" (click)="goToDetail(order)">
+            <td class="px-4 py-3 font-bold text-slate-900">{{ order.code }}</td>
+            <td class="px-4 py-3 text-slate-600">{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td class="px-4 py-3 text-slate-600">{{ order.user?.full_name || '-' }}</td>
+            <td class="px-4 py-3 text-center">{{ order.order_items.length }}</td>
+            <td class="px-4 py-3 text-right font-bold">{{ order.total_amount | currencyVn }}</td>
+            <td class="px-4 py-3 text-center"><app-badge [status]="order.status"></app-badge></td>
+            <td class="px-4 py-3 text-right">
+              <button
+                *ngIf="canCancel(order)"
+                type="button"
+                class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                (click)="cancel(order, $event)"
+              >
+                Hủy đơn
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <app-empty-state *ngIf="orders.length === 0" title="Không có đơn hàng" message="Thử đổi bộ lọc trạng thái hoặc khoảng ngày."></app-empty-state>
+
+    <div class="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm text-slate-500">Trang {{ page }} / {{ totalPages }} - {{ orders.length }} đơn</p>
+      <div class="flex gap-2">
+        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50" [disabled]="page === 1" (click)="page = page - 1">
+          Trước
+        </button>
+        <button type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50" [disabled]="page === totalPages" (click)="page = page + 1">
+          Sau
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

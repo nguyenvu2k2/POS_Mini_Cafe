@@ -20,7 +20,12 @@ const uploadDir = path.join(process.cwd(), 'uploads', 'products');
 fs.mkdirSync(uploadDir, { recursive: true });
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
+app.use(
+  cors({
+    origin: ['http://localhost:4200', 'https://frontend-pos.up.railway.app'],
+    credentials: true,
+  }),
+);
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));

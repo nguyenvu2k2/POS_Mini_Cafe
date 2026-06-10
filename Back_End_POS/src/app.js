@@ -11,6 +11,7 @@ const sequelize = require('./config/database');
 const apiRoutes = require('./routes');
 const openapiSpec = require('./docs/openapi');
 const errorHandler = require('./middlewares/errorHandler');
+const { initDatabase } = require('./scripts/initDatabase');
 const ensureIngredientActiveColumn = require('./scripts/ensureIngredientActiveColumn');
 const { sendError } = require('./utils/response');
 
@@ -19,10 +20,35 @@ const uploadDir = path.join(process.cwd(), 'uploads', 'products');
 
 fs.mkdirSync(uploadDir, { recursive: true });
 
+const parseCorsOrigins = () => {
+  const configuredOrigins = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN;
+
+  if (!configuredOrigins) {
+    return ['http://localhost:4200', 'https://frontend-pos.up.railway.app'];
+  }
+
+  return configuredOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+};
+
+const corsOrigins = parseCorsOrigins();
+
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
-    origin: ['http://localhost:4200', 'https://frontend-pos.up.railway.app'],
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        corsOrigins.includes('*') ||
+        corsOrigins.includes(origin)
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   }),
 );
@@ -58,6 +84,8 @@ app.use(errorHandler);
 const start = async () => {
   const port = Number(process.env.PORT || 3000);
 
+  const initResult = await initDatabase();
+  console.log(initResult.message);
   await sequelize.authenticate();
   await ensureIngredientActiveColumn();
   app.listen(port, () => {

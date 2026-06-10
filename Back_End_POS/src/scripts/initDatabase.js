@@ -1,7 +1,8 @@
-const fs = require('fs');
+const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
-const path = require('path');
 require('dotenv').config();
+
+const { Role, User, sequelize } = require('../models');
 
 const requiredTables = [
   'roles',
@@ -19,144 +20,145 @@ const requiredTables = [
   'inventory_logs',
 ];
 
+const defaultRoles = [
+  { name: 'admin', description: 'Quan tri vien toan quyen' },
+  { name: 'cashier', description: 'Nhan vien thu ngan' },
+  { name: 'barista', description: 'Nhan vien pha che' },
+];
+
+const getEnv = (name, fallbackName, defaultValue) =>
+  process.env[name] ?? process.env[fallbackName] ?? defaultValue;
+
 const getConfig = () => ({
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: Number(process.env.DB_PORT || 3307),
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS ?? '',
-  database: process.env.DB_NAME || 'pos_mini_cafe',
+  host: getEnv('DB_HOST', 'MYSQLHOST', '127.0.0.1'),
+  port: Number(getEnv('DB_PORT', 'MYSQLPORT', 3307)),
+  user: getEnv('DB_USER', 'MYSQLUSER', 'root'),
+  password: process.env.DB_PASS ?? process.env.MYSQLPASSWORD ?? '',
+  database: getEnv('DB_NAME', 'MYSQLDATABASE', 'pos_mini_cafe'),
 });
 
-const splitSqlStatements = (sql) => {
-  const statements = [];
-  let current = '';
-  let quote = null;
+const shouldCreateDatabase = () =>
+  !process.env.DATABASE_URL &&
+  !process.env.MYSQL_URL &&
+  process.env.DB_CREATE_DATABASE !== 'false';
 
-  for (let index = 0; index < sql.length; index += 1) {
-    const char = sql[index];
-    const next = sql[index + 1];
+const ensureDatabaseExists = async () => {
+  if (!shouldCreateDatabase()) {
+    return;
+  }
 
-    if (!quote && char === '-' && next === '-') {
-      while (index < sql.length && sql[index] !== '\n') {
-        index += 1;
-      }
-      current += '\n';
-      continue;
-    }
+  const config = getConfig();
 
-    if (!quote && char === '/' && next === '*') {
-      index += 2;
-      while (
-        index < sql.length &&
-        !(sql[index] === '*' && sql[index + 1] === '/')
-      ) {
-        index += 1;
-      }
-      index += 1;
-      continue;
-    }
+  let connection;
 
+  try {
+    connection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+    });
+
+    await connection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${config.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+    );
+  } catch (error) {
     if (
-      (char === "'" || char === '"' || char === '`') &&
-      sql[index - 1] !== '\\'
+      error.code === 'ER_DBACCESS_DENIED_ERROR' ||
+      error.code === 'ER_ACCESS_DENIED_ERROR'
     ) {
-      if (quote === char) {
-        quote = null;
-      } else if (!quote) {
-        quote = char;
-      }
+      console.warn(
+        'Khong co quyen tao database, tiep tuc ket noi database hien co.',
+      );
+      return;
     }
 
-    if (char === ';' && !quote) {
-      const statement = current.trim();
-      if (statement) {
-        statements.push(statement);
-      }
-      current = '';
-      continue;
+    throw error;
+  } finally {
+    if (connection) {
+      await connection.end();
     }
-
-    current += char;
   }
-
-  const tail = current.trim();
-  if (tail) {
-    statements.push(tail);
-  }
-
-  return statements;
 };
 
-const getExistingTables = async (connection, database) => {
-  const [rows] = await connection.query(
-    `
-      SELECT TABLE_NAME AS table_name
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_SCHEMA = ?
-        AND TABLE_NAME IN (${requiredTables.map(() => '?').join(',')})
-    `,
-    [database, ...requiredTables],
-  );
+const normalizeTableName = (table) => {
+  if (typeof table === 'string') {
+    return table;
+  }
 
-  return rows.map((row) => row.table_name);
+  return table.tableName || table.table_name || table.name;
+};
+
+const getExistingTables = async () => {
+  const tables = await sequelize.getQueryInterface().showAllTables();
+  return tables.map(normalizeTableName).filter(Boolean);
+};
+
+const seedRoles = async () => {
+  for (const role of defaultRoles) {
+    await Role.findOrCreate({
+      where: { name: role.name },
+      defaults: role,
+    });
+  }
+};
+
+const seedAdminUser = async () => {
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    return { created: false, skipped: true };
+  }
+
+  const [role] = await Role.findOrCreate({
+    where: { name: 'admin' },
+    defaults: defaultRoles[0],
+  });
+
+  const password_hash = await bcrypt.hash(password, 10);
+  const [user, created] = await User.findOrCreate({
+    where: { email },
+    defaults: {
+      role_id: role.id,
+      name: process.env.ADMIN_NAME || 'POS Admin',
+      email,
+      password_hash,
+      is_active: true,
+    },
+  });
+
+  if (!created && !user.is_active) {
+    await user.update({ is_active: true });
+  }
+
+  return { created, skipped: false };
 };
 
 const initDatabase = async () => {
-  const config = getConfig();
-  const serverConnection = await mysql.createConnection({
-    host: config.host,
-    port: config.port,
-    user: config.user,
-    password: config.password,
-  });
+  await ensureDatabaseExists();
+  await sequelize.authenticate();
 
-  await serverConnection.query(
-    `CREATE DATABASE IF NOT EXISTS \`${config.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+  const existingTables = await getExistingTables();
+  const missingTables = requiredTables.filter(
+    (table) => !existingTables.includes(table),
   );
-  await serverConnection.end();
 
-  const connection = await mysql.createConnection({
-    host: config.host,
-    port: config.port,
-    user: config.user,
-    password: config.password,
-    database: config.database,
-    multipleStatements: false,
-  });
-
-  try {
-    const existingTables = await getExistingTables(connection, config.database);
-
-    if (existingTables.length === requiredTables.length) {
-      return {
-        initialized: false,
-        message: 'Schema da ton tai, bo qua import.',
-      };
-    }
-
-    if (existingTables.length > 0) {
-      const missingTables = requiredTables.filter(
-        (table) => !existingTables.includes(table),
-      );
-      throw new Error(
-        `Database dang thieu bang: ${missingTables.join(
-          ', ',
-        )}. Hay backup/drop database roi chay lai init-db de tranh mat du lieu.`,
-      );
-    }
-
-    const schemaPath = path.join(process.cwd(), 'pos_mini_cafe_schema.sql');
-    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-    const statements = splitSqlStatements(schemaSql);
-
-    for (const statement of statements) {
-      await connection.query(statement);
-    }
-
-    return { initialized: true, message: 'Da import schema pos_mini_cafe.' };
-  } finally {
-    await connection.end();
+  if (missingTables.length > 0) {
+    await sequelize.sync();
   }
+
+  await seedRoles();
+  const admin = await seedAdminUser();
+
+  return {
+    initialized: missingTables.length > 0,
+    message:
+      missingTables.length > 0
+        ? `Da tao schema, thieu ${missingTables.length} bang.`
+        : 'Schema da san sang.',
+    admin,
+  };
 };
 
 if (require.main === module) {
@@ -167,6 +169,9 @@ if (require.main === module) {
     .catch((error) => {
       console.error('Khong the khoi tao database:', error.message);
       process.exitCode = 1;
+    })
+    .finally(async () => {
+      await sequelize.close();
     });
 }
 

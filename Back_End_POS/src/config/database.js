@@ -7,6 +7,24 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 const getEnv = (name, fallbackName, defaultValue) =>
   process.env[name] ?? process.env[fallbackName] ?? defaultValue;
 
+const getDatabaseName = () =>
+  process.env.DB_DATABASE ??
+  process.env.DB_NAME ??
+  process.env.MYSQLDATABASE ??
+  'pos_mini_cafe';
+
+const getDatabaseUser = () =>
+  process.env.DB_USERNAME ??
+  process.env.DB_USER ??
+  process.env.MYSQLUSER ??
+  'root';
+
+const getDatabasePassword = () =>
+  process.env.DB_PASSWORD ??
+  process.env.DB_PASS ??
+  process.env.MYSQLPASSWORD ??
+  '';
+
 const commonOptions = {
   dialect: 'mysql',
   timezone: process.env.DB_TIMEZONE || '+07:00',
@@ -27,15 +45,10 @@ const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
 
 const sequelize = databaseUrl
   ? new Sequelize(databaseUrl, commonOptions)
-  : new Sequelize(
-      getEnv('DB_NAME', 'MYSQLDATABASE', 'pos_mini_cafe'),
-      getEnv('DB_USER', 'MYSQLUSER', 'root'),
-      process.env.DB_PASS ?? process.env.MYSQLPASSWORD ?? '',
-      {
-        ...commonOptions,
-        host: getEnv('DB_HOST', 'MYSQLHOST', '127.0.0.1'),
-        port: Number(getEnv('DB_PORT', 'MYSQLPORT', 3307)),
-      },
-    );
+  : new Sequelize(getDatabaseName(), getDatabaseUser(), getDatabasePassword(), {
+      ...commonOptions,
+      host: getEnv('DB_HOST', 'MYSQLHOST', '127.0.0.1'),
+      port: Number(getEnv('DB_PORT', 'MYSQLPORT', 3307)),
+    });
 
 module.exports = sequelize;

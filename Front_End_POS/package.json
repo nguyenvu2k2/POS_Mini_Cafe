@@ -2,10 +2,15 @@
   "name": "front-end-pos-mini-cafe",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --host 127.0.0.1",
-    "build": "ng build",
+    "start": "node server.js",
+    "dev": "ng serve --host 127.0.0.1",
+    "start:dev": "ng serve --host 127.0.0.1",
+    "build": "ng build --configuration production",
     "test": "ng test --watch=false --browsers=ChromeHeadless"
   },
   "dependencies": {

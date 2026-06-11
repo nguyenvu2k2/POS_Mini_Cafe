@@ -28,6 +28,8 @@ const defaultCorsOrigins = [
   'http://127.0.0.1:4200',
   'http://127.0.0.1:5173',
   'https://frontend-pos.up.railway.app',
+  'https://pos-mini.up.railway.app',
+  'https://pos-mini-cafe.up.railway.app',
 ];
 
 const parseCorsOrigins = () => {
@@ -74,7 +76,9 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(new Error('Not allowed by CORS'));
+      const error = new Error('Not allowed by CORS');
+      error.statusCode = 403;
+      return callback(error);
     },
     credentials: true,
   }),

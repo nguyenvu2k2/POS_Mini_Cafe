@@ -20,11 +20,21 @@ const uploadDir = path.join(process.cwd(), 'uploads', 'products');
 
 fs.mkdirSync(uploadDir, { recursive: true });
 
+const defaultCorsOrigins = [
+  'http://localhost:3000',
+  'http://localhost:4200',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:4200',
+  'http://127.0.0.1:5173',
+  'https://frontend-pos.up.railway.app',
+];
+
 const parseCorsOrigins = () => {
   const configuredOrigins = process.env.CORS_ORIGINS || process.env.CORS_ORIGIN;
 
   if (!configuredOrigins) {
-    return ['http://localhost:4200', 'https://frontend-pos.up.railway.app'];
+    return defaultCorsOrigins;
   }
 
   return configuredOrigins
@@ -35,6 +45,22 @@ const parseCorsOrigins = () => {
 
 const corsOrigins = parseCorsOrigins();
 
+const isLocalDevelopmentOrigin = (origin) => {
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return (
+      ['http:', 'https:'].includes(protocol) &&
+      ['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname)
+    );
+  } catch {
+    return false;
+  }
+};
+
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(
   cors({
@@ -42,7 +68,8 @@ app.use(
       if (
         !origin ||
         corsOrigins.includes('*') ||
-        corsOrigins.includes(origin)
+        corsOrigins.includes(origin) ||
+        isLocalDevelopmentOrigin(origin)
       ) {
         return callback(null, true);
       }

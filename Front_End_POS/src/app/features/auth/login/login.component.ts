@@ -18,7 +18,6 @@ export class LoginComponent {
 
   readonly demoAccounts = [
     { label: 'Admin', email: 'admin@pos.local', password: 'admin123456' },
-    { label: 'Cashier', email: 'ntvu@mini.cafe', password: '123456' },
   ];
 
   readonly form = this.fb.nonNullable.group({

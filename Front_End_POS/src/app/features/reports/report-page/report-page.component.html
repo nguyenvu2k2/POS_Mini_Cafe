@@ -31,7 +31,7 @@
         </div>
         <div>
           <label for="groupBy" class="mb-1 block text-xs font-bold uppercase text-slate-500">Nhóm theo</label>
-          <select id="groupBy" [(ngModel)]="groupBy" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
+          <select id="groupBy" [(ngModel)]="groupBy" (ngModelChange)="loadRevenue()" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-primary">
             <option value="day">Ngày</option>
             <option value="week">Tuần</option>
             <option value="month">Tháng</option>

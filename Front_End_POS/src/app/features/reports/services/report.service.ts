@@ -50,7 +50,7 @@ export class ReportService {
     });
 
     return points.map((point) => ({
-      period: String(point.period),
+      period: this.formatPeriod(point.period, groupBy),
       orderCount: Number(point.total_orders),
       revenue: Number(point.revenue)
     }));
@@ -70,5 +70,29 @@ export class ReportService {
 
   async getLowStock(): Promise<Ingredient[]> {
     return this.ingredientService.getAll(true);
+  }
+
+  private formatPeriod(period: string | number, groupBy: RevenueGroupBy): string {
+    const value = String(period);
+
+    if (groupBy === 'day') {
+      return this.formatDateLabel(value);
+    }
+
+    if (groupBy === 'month') {
+      const [year, month] = value.split('-');
+      return year && month ? `${month}/${year}` : value;
+    }
+
+    const normalizedWeek = value.padStart(6, '0');
+    const year = normalizedWeek.slice(0, 4);
+    const week = normalizedWeek.slice(4);
+
+    return year && week ? `Tuần ${Number(week)}/${year}` : value;
+  }
+
+  private formatDateLabel(value: string): string {
+    const [year, month, day] = value.slice(0, 10).split('-');
+    return year && month && day ? `${day}/${month}/${year}` : value;
   }
 }

@@ -24,6 +24,7 @@ export class ProductFormComponent implements OnInit {
   previewUrl = '';
   isLoading = false;
   isSaving = false;
+  private selectedImageFile: File | null = null;
 
   readonly form = this.fb.group({
     name: ['', Validators.required],
@@ -129,10 +130,22 @@ export class ProductFormComponent implements OnInit {
       return;
     }
 
+    if (!file.type.startsWith('image/')) {
+      this.toast.warning('File upload phai la anh.');
+      input.value = '';
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      this.toast.warning('Anh san pham khong duoc vuot qua 3MB.');
+      input.value = '';
+      return;
+    }
+
+    this.selectedImageFile = file;
     const reader = new FileReader();
     reader.onload = () => {
       this.previewUrl = String(reader.result);
-      this.form.patchValue({ image_url: this.previewUrl });
     };
     reader.readAsDataURL(file);
   }
@@ -158,10 +171,13 @@ export class ProductFormComponent implements OnInit {
     try {
       const payload = this.toPayload();
       if (this.productId) {
-        await this.productService.update(this.productId, payload);
+        const product = await this.productService.update(this.productId, payload);
+        await this.uploadSelectedImage(product.id);
         this.toast.success('Đã cập nhật sản phẩm.');
       } else {
-        await this.productService.create(payload);
+        const product = await this.productService.create(payload);
+        this.productId = product.id;
+        await this.uploadSelectedImage(product.id);
         this.toast.success('Đã thêm sản phẩm.');
       }
 
@@ -191,6 +207,7 @@ export class ProductFormComponent implements OnInit {
         is_active: product.is_active
       });
       this.previewUrl = product.image_url;
+      this.selectedImageFile = null;
       this.variants.clear();
       const recipesByVariant = await Promise.all(
         product.variants.map((variant) =>
@@ -233,6 +250,15 @@ export class ProductFormComponent implements OnInit {
     );
   }
 
+  private async uploadSelectedImage(productId: number): Promise<void> {
+    if (!this.selectedImageFile) {
+      return;
+    }
+
+    await this.productService.uploadProductImage(productId, this.selectedImageFile);
+    this.selectedImageFile = null;
+  }
+
   private toPayload(): CreateProductDto {
     const raw = this.form.getRawValue();
     const variants = (raw.variants as ProductVariantDto[]).map((variant) => ({
@@ -249,7 +275,6 @@ export class ProductFormComponent implements OnInit {
       name: raw.name ?? '',
       description: raw.description ?? '',
       category_id: Number(raw.category_id),
-      image_url: raw.image_url || 'https://images.unsplash.com/photo-1498804103079-a6351b050096?auto=format&fit=crop&w=640&q=80',
       is_active: Boolean(raw.is_active),
       variants
     };

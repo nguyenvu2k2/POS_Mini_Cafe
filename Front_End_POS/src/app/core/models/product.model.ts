@@ -53,7 +53,6 @@ export interface CreateProductDto {
   name: string;
   description: string;
   category_id: number;
-  image_url: string;
   is_active: boolean;
   variants: ProductVariantDto[];
 }

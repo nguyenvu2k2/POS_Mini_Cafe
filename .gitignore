@@ -21,6 +21,7 @@ coverage/
 # Runtime uploads
 Back_End_POS/uploads/*
 !Back_End_POS/uploads/products/
+Back_End_POS/uploads/products/*
 !Back_End_POS/uploads/products/.gitkeep
 
 # OS and editor files

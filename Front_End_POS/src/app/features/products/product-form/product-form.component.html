@@ -116,7 +116,7 @@
         <div class="mt-4 aspect-[4/3] overflow-hidden rounded-lg bg-slate-100">
           <img *ngIf="previewUrl || form.value.image_url" [src]="previewUrl || form.value.image_url" alt="Preview" class="h-full w-full object-cover">
         </div>
-        <input type="file" accept="image/*" class="mt-4 w-full text-sm text-slate-600" (change)="onFileSelected($event)">
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="mt-4 w-full text-sm text-slate-600" (change)="onFileSelected($event)">
       </div>
 
       <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

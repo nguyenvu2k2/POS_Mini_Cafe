@@ -8,6 +8,12 @@ const { requireRole, verifyToken } = require('../middlewares/auth');
 const validate = require('../middlewares/validate');
 
 const router = express.Router();
+const maxProductImageBase64Length = Math.ceil((3 * 1024 * 1024 * 4) / 3) + 128;
+const productImageBase64Pattern = /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
+const allowedImageMimeTypes = new Set(['image/gif', 'image/jpeg', 'image/png', 'image/webp']);
+
+const isProductImageBase64 = (value) =>
+  typeof value === 'string' && productImageBase64Pattern.test(value.trim());
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) =>
@@ -22,7 +28,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 3 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
+    if (!allowedImageMimeTypes.has(file.mimetype)) {
       return cb(new Error('File upload phai la anh'));
     }
     return cb(null, true);
@@ -103,6 +109,17 @@ router.post(
   upload.single('image'),
   [
     param('id').isInt({ min: 1 }),
+    body('image_base64')
+      .optional()
+      .isLength({ max: maxProductImageBase64Length })
+      .withMessage('Anh san pham khong duoc vuot qua 3MB')
+      .custom((value) => {
+        if (!isProductImageBase64(value)) {
+          throw new Error('Anh san pham phai la base64 data URL hop le');
+        }
+
+        return true;
+      }),
     body('is_primary').optional().isBoolean().toBoolean(),
     body('sort_order').optional().isInt(),
   ],

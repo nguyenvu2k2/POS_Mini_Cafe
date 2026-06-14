@@ -1,5 +1,5 @@
 import { NgFor, NgIf } from '@angular/common';
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Ingredient } from '../../../core/models/ingredient.model';
@@ -15,7 +15,7 @@ import { ProductService } from '../services/product.service';
   imports: [NgFor, NgIf, ReactiveFormsModule, RouterLink, LoadingSpinnerComponent],
   templateUrl: './product-form.component.html'
 })
-export class ProductFormComponent implements OnInit {
+export class ProductFormComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
 
   categories: Category[] = [];
@@ -25,6 +25,7 @@ export class ProductFormComponent implements OnInit {
   isLoading = false;
   isSaving = false;
   private selectedImageFile: File | null = null;
+  private objectPreviewUrl: string | null = null;
 
   readonly form = this.fb.group({
     name: ['', Validators.required],
@@ -59,6 +60,10 @@ export class ProductFormComponent implements OnInit {
     } else {
       this.addVariant();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.revokeObjectPreviewUrl();
   }
 
   variantControl(index: number, key: string): AbstractControl | null {
@@ -126,28 +131,33 @@ export class ProductFormComponent implements OnInit {
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
+    const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
     if (!file) {
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
+    if (!allowedImageTypes.has(file.type)) {
       this.toast.warning('File upload phai la anh.');
+      this.selectedImageFile = null;
+      this.revokeObjectPreviewUrl();
+      this.previewUrl = this.form.value.image_url ?? '';
       input.value = '';
       return;
     }
 
     if (file.size > 3 * 1024 * 1024) {
       this.toast.warning('Anh san pham khong duoc vuot qua 3MB.');
+      this.selectedImageFile = null;
+      this.revokeObjectPreviewUrl();
+      this.previewUrl = this.form.value.image_url ?? '';
       input.value = '';
       return;
     }
 
     this.selectedImageFile = file;
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.previewUrl = String(reader.result);
-    };
-    reader.readAsDataURL(file);
+    this.revokeObjectPreviewUrl();
+    this.objectPreviewUrl = URL.createObjectURL(file);
+    this.previewUrl = this.objectPreviewUrl;
   }
 
   async submit(): Promise<void> {
@@ -208,6 +218,7 @@ export class ProductFormComponent implements OnInit {
       });
       this.previewUrl = product.image_url;
       this.selectedImageFile = null;
+      this.revokeObjectPreviewUrl();
       this.variants.clear();
       const recipesByVariant = await Promise.all(
         product.variants.map((variant) =>
@@ -257,6 +268,16 @@ export class ProductFormComponent implements OnInit {
 
     await this.productService.uploadProductImage(productId, this.selectedImageFile);
     this.selectedImageFile = null;
+    this.revokeObjectPreviewUrl();
+  }
+
+  private revokeObjectPreviewUrl(): void {
+    if (!this.objectPreviewUrl) {
+      return;
+    }
+
+    URL.revokeObjectURL(this.objectPreviewUrl);
+    this.objectPreviewUrl = null;
   }
 
   private toPayload(): CreateProductDto {

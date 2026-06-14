@@ -146,6 +146,20 @@ const openapiSpec = {
           },
         },
       },
+      ProductImageBase64: {
+        type: 'object',
+        required: ['image_base64'],
+        properties: {
+          image_base64: {
+            type: 'string',
+            description:
+              'Legacy image data URL. The API stores it as a file and saves only the file URL in the database.',
+            example: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...',
+          },
+          is_primary: { type: 'boolean', example: true },
+          sort_order: { type: 'integer', example: 0 },
+        },
+      },
       RecipeUpdate: {
         type: 'object',
         properties: {
@@ -391,11 +405,14 @@ const openapiSpec = {
       post: {
         tags: ['Products'],
         security: auth,
-        summary: 'Upload product image (admin)',
+        summary: 'Upload product image and save only the file URL (admin)',
         parameters: [idParam()],
         requestBody: {
           required: true,
           content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ProductImageBase64' },
+            },
             'multipart/form-data': {
               schema: {
                 type: 'object',

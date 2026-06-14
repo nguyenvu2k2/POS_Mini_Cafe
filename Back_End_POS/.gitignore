@@ -10,6 +10,7 @@ logs/
 uploads/*
 !uploads/
 !uploads/products/
+uploads/products/*
 !uploads/products/.gitkeep
 
 npm-debug.log*

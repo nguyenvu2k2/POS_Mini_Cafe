@@ -14,6 +14,7 @@
     "pos:start": "node src/app.js",
     "pos:dev": "node --watch src/app.js",
     "pos:init-db": "node src/scripts/initDatabase.js",
+    "pos:migrate-product-images": "node src/scripts/migrateProductImagesToFiles.js",
     "pos:create-admin": "node src/scripts/createAdmin.js",
     "start": "node src/app.js",
     "start:dev": "nest start --watch",

@@ -1,3 +1,6 @@
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { Op } = require('sequelize');
 const {
   Category,
@@ -35,13 +38,103 @@ const getProductIncludes = (includeQuery) => {
   }
 
   if (requested.includes('images')) {
-    includes.push({ model: ProductImage, as: 'images' });
+    includes.push({
+      model: ProductImage,
+      as: 'images',
+      required: false,
+      where: { is_primary: true },
+    });
   }
 
   return includes;
 };
 
 const getRecipeItems = (payload) => payload.ingredients || payload.recipes || [];
+const maxProductImageBytes = 3 * 1024 * 1024;
+const imageMimeExtensions = {
+  'image/gif': '.gif',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+};
+const imageBase64Pattern = /^data:(image\/(?:png|jpe?g|webp|gif));base64,([A-Za-z0-9+/]+={0,2})$/i;
+
+const normalizeImageBase64 = (payload) => {
+  const imageBase64 = payload.image_base64;
+
+  if (typeof imageBase64 !== 'string') {
+    return '';
+  }
+
+  return imageBase64.trim();
+};
+
+const createProductImageFilename = (extension) =>
+  `${Date.now()}-${crypto.randomUUID()}${extension}`;
+
+const resolveUploadDir = () => path.join(process.cwd(), 'uploads', 'products');
+
+const saveBase64ProductImage = async (imageBase64) => {
+  const match = imageBase64Pattern.exec(imageBase64);
+
+  if (!match) {
+    throw new HttpError(400, 'Anh san pham phai la base64 data URL hop le');
+  }
+
+  const mimeType = match[1].toLowerCase();
+  const extension = imageMimeExtensions[mimeType];
+  const buffer = Buffer.from(match[2], 'base64');
+
+  if (buffer.length > maxProductImageBytes) {
+    throw new HttpError(400, 'Anh san pham khong duoc vuot qua 3MB');
+  }
+
+  const filename = createProductImageFilename(extension);
+  const uploadDir = resolveUploadDir();
+  await fs.promises.mkdir(uploadDir, { recursive: true });
+  await fs.promises.writeFile(path.join(uploadDir, filename), buffer);
+
+  return `/uploads/products/${filename}`;
+};
+
+const resolveProductImageUrl = async (req) => {
+  if (req.file) {
+    return `/uploads/products/${req.file.filename}`;
+  }
+
+  const imageBase64 = normalizeImageBase64(req.body);
+
+  if (!imageBase64) {
+    return '';
+  }
+
+  return saveBase64ProductImage(imageBase64);
+};
+
+const deleteLocalProductImageFiles = async (urls) => {
+  const uploadDir = resolveUploadDir();
+
+  await Promise.all(
+    urls
+      .filter((url) => typeof url === 'string' && url.startsWith('/uploads/products/'))
+      .map(async (url) => {
+        const filePath = path.resolve(uploadDir, path.basename(url));
+
+        if (!filePath.startsWith(path.resolve(uploadDir))) {
+          return;
+        }
+
+        try {
+          await fs.promises.unlink(filePath);
+        } catch (error) {
+          if (error.code !== 'ENOENT') {
+            console.warn(`Khong the xoa anh cu ${url}: ${error.message}`);
+          }
+        }
+      }),
+  );
+};
 
 const normalizeRecipeItems = (payload) => {
   const recipes = getRecipeItems(payload);
@@ -221,26 +314,42 @@ const addProductImage = async (req, res) => {
     throw new HttpError(404, 'Khong tim thay san pham');
   }
 
-  if (!req.file) {
-    throw new HttpError(400, 'Vui long upload anh san pham');
+  const imageUrl = await resolveProductImageUrl(req);
+
+  if (!imageUrl) {
+    throw new HttpError(400, 'Vui long gui anh san pham');
   }
 
   const isPrimary =
     req.body.is_primary === 'true' || req.body.is_primary === true;
 
-  if (isPrimary) {
-    await ProductImage.update(
-      { is_primary: false },
-      { where: { product_id: product.id } },
-    );
-  }
+  const oldImageUrls = [];
+  const image = await sequelize.transaction(async (transaction) => {
+    if (isPrimary) {
+      const oldImages = await ProductImage.findAll({
+        where: { product_id: product.id },
+        transaction,
+      });
+      oldImageUrls.push(...oldImages.map((item) => item.url));
 
-  const image = await ProductImage.create({
-    product_id: product.id,
-    url: `/uploads/products/${req.file.filename}`,
-    is_primary: isPrimary,
-    sort_order: Number(req.body.sort_order || 0),
+      await ProductImage.destroy({
+        where: { product_id: product.id },
+        transaction,
+      });
+    }
+
+    return ProductImage.create(
+      {
+        product_id: product.id,
+        url: imageUrl,
+        is_primary: isPrimary,
+        sort_order: Number(req.body.sort_order || 0),
+      },
+      { transaction },
+    );
   });
+
+  await deleteLocalProductImageFiles(oldImageUrls);
 
   return sendSuccess(res, image, undefined, 201);
 };

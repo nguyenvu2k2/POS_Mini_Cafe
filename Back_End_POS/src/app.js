@@ -13,6 +13,7 @@ const openapiSpec = require('./docs/openapi');
 const errorHandler = require('./middlewares/errorHandler');
 const { initDatabase } = require('./scripts/initDatabase');
 const ensureIngredientActiveColumn = require('./scripts/ensureIngredientActiveColumn');
+const ensureProductImageUrlColumn = require('./scripts/ensureProductImageUrlColumn');
 const { sendError } = require('./utils/response');
 
 const app = express();
@@ -84,9 +85,15 @@ app.use(
   }),
 );
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use(
+  '/uploads',
+  express.static(path.join(process.cwd(), 'uploads'), {
+    immutable: true,
+    maxAge: '30d',
+  }),
+);
 
 app.get('/', (req, res) => {
   res.redirect('/docs');
@@ -119,6 +126,7 @@ const start = async () => {
   console.log(initResult.message);
   await sequelize.authenticate();
   await ensureIngredientActiveColumn();
+  await ensureProductImageUrlColumn();
   app.listen(port, () => {
     console.log(`POS Mini Cafe API running at http://localhost:${port}`);
   });

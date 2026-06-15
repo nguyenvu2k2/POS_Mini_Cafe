@@ -223,6 +223,17 @@ export class CreateOrderComponent implements OnInit {
     this.cartItems = [...this.cartItems, { product, variant, quantity: 1 }];
   }
 
+  onProductImageError(event: Event, product: Product): void {
+    const image = event.target as HTMLImageElement;
+    const fallbackUrl = this.productService.getDefaultImageForName(product.name);
+
+    if (image.getAttribute('src') === fallbackUrl) {
+      return;
+    }
+
+    image.src = fallbackUrl;
+  }
+
   increase(item: CartItem): void {
     item.quantity += 1;
     this.cartItems = [...this.cartItems];

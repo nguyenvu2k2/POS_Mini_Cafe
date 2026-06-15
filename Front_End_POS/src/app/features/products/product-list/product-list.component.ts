@@ -55,4 +55,15 @@ export class ProductListComponent implements OnInit {
     this.toast.success(product.is_active ? 'Đã ẩn sản phẩm.' : 'Đã hiển thị sản phẩm.');
     await this.loadProducts();
   }
+
+  onProductImageError(event: Event, product: Product): void {
+    const image = event.target as HTMLImageElement;
+    const fallbackUrl = this.productService.getDefaultImageForName(product.name);
+
+    if (image.getAttribute('src') === fallbackUrl) {
+      return;
+    }
+
+    image.src = fallbackUrl;
+  }
 }

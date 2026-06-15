@@ -50,7 +50,7 @@
         [ngClass]="product.is_out_of_stock || productHasHiddenIngredients(product) || selectedVariantMissingRecipe(product) ? 'opacity-55 grayscale' : 'hover:-translate-y-0.5 hover:shadow-md'"
       >
         <div class="aspect-[4/3] overflow-hidden bg-slate-100">
-          <img [src]="product.image_url" [alt]="product.name" class="h-full w-full object-cover">
+          <img [src]="product.image_url" [alt]="product.name" class="h-full w-full object-cover" (error)="onProductImageError($event, product)">
         </div>
         <div class="space-y-3 p-4">
           <div>

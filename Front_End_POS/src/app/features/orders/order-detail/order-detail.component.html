@@ -93,13 +93,13 @@
       </div>
 
       <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 class="text-base font-bold text-slate-900">Thao tac</h3>
+        <h3 class="text-base font-bold text-slate-900">Thao tác</h3>
         <div class="mt-4 space-y-2">
           <button
             *ngIf="nextStatus"
             type="button"
             class="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark"
-            (click)="moveNext()"
+            (click)="openStatusConfirmModal()"
           >
             Chuyển sang {{ nextStatus | orderStatus }}
           </button>
@@ -115,7 +115,7 @@
             *ngIf="canCancel()"
             type="button"
             class="w-full rounded-lg border border-red-200 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50"
-            (click)="cancel()"
+            (click)="openCancelConfirmModal()"
           >
            Hủy đơn
           </button>
@@ -124,6 +124,66 @@
     </aside>
   </section>
 </div>
+
+<app-modal [open]="isStatusConfirmModalOpen" title="Xác nhận chuyển trạng thái" [showClose]="false" (close)="closeStatusConfirmModal()">
+  <form [formGroup]="statusConfirmForm" class="space-y-5" (ngSubmit)="confirmMoveNext()">
+    <div class="space-y-1 text-center text-base font-bold">
+      <p class="text-slate-900">
+        Chuyển đơn <span class="text-primary">{{ order?.code }}</span> sang
+      </p>
+      <p class="text-green-700">{{ nextStatus | orderStatus }}?</p>
+    </div>
+
+    <div class="flex flex-col justify-center gap-3 sm:flex-row">
+      <button
+        type="button"
+        class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isUpdatingStatus"
+        (click)="closeStatusConfirmModal()"
+      >
+        Đóng
+      </button>
+      <button
+        type="submit"
+        class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isUpdatingStatus"
+      >
+        <app-loading-spinner *ngIf="isUpdatingStatus" size="sm"></app-loading-spinner>
+        Xác nhận
+      </button>
+    </div>
+  </form>
+</app-modal>
+
+<app-modal [open]="isCancelConfirmModalOpen" title="Xác nhận hủy đơn" [showClose]="false" (close)="closeCancelConfirmModal()">
+  <form [formGroup]="cancelOrderForm" class="space-y-5" (ngSubmit)="confirmCancelOrder()">
+    <div class="space-y-1 text-center text-base font-bold">
+      <p class="text-slate-900">
+        Bạn có chắc muốn hủy đơn
+      </p>
+      <p class="text-green-700">{{ order?.code }}?</p>
+    </div>
+
+    <div class="flex flex-col justify-center gap-3 sm:flex-row">
+      <button
+        type="button"
+        class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isCancelling"
+        (click)="closeCancelConfirmModal()"
+      >
+        Đóng
+      </button>
+      <button
+        type="submit"
+        class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+        [disabled]="isCancelling"
+      >
+        <app-loading-spinner *ngIf="isCancelling" size="sm"></app-loading-spinner>
+        Xác nhận
+      </button>
+    </div>
+  </form>
+</app-modal>
 
 <app-modal [open]="isPaymentModalOpen" title="Thanh toan don hang" (close)="isPaymentModalOpen = false">
   <div class="space-y-5">
@@ -209,18 +269,23 @@
   </div>
 </app-modal>
 
-<app-modal [open]="isPrintInvoiceModalOpen" title="In hóa đơn" [showClose]="false" (close)="cancelPrintInvoice()">
+<app-modal [open]="isPrintInvoiceModalOpen" title="Xác nhận in hóa đơn" [showClose]="false" (close)="cancelPrintInvoice()">
   <form [formGroup]="printInvoiceForm" class="space-y-5" (ngSubmit)="payAndPrintInvoice()">
-    <p class="text-base font-bold text-slate-900">{{ printInvoicePrompt }}</p>
+    <div class="space-y-1 text-center text-base font-bold">
+      <p class="text-green-700">
+        {{ paymentMethod === 'momo' ? 'Thanh toán MoMo đã được xác nhận thành công.' : 'Thanh toán thành công.' }}
+      </p>
+      <p class="text-slate-900">In hóa đơn?</p>
+    </div>
 
-    <div class="flex justify-end gap-3">
+    <div class="flex flex-col justify-center gap-3 sm:flex-row">
       <button
         type="button"
-        class="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+        class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
         [disabled]="isPaying"
         (click)="cancelPrintInvoice()"
       >
-        Hủy
+        Đóng
       </button>
       <button
         type="submit"
@@ -228,7 +293,7 @@
         [disabled]="isPaying"
       >
         <app-loading-spinner *ngIf="isPaying" size="sm"></app-loading-spinner>
-        Ok
+        Xác nhận
       </button>
     </div>
   </form>

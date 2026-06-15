@@ -25,7 +25,10 @@ export class IngredientListComponent implements OnInit {
   isLoading = false;
   isSaving = false;
   isCreating = false;
+  isSavingVisibility = false;
   activeForm = false;
+  hidingIngredient: Ingredient | null = null;
+  showingIngredient: Ingredient | null = null;
 
   selectedIngredient: Ingredient | null = null;
   action: StockAction | null = null;
@@ -39,6 +42,9 @@ export class IngredientListComponent implements OnInit {
     stock_quantity: [0, [Validators.required, Validators.min(0)]],
     min_stock: [0, [Validators.required, Validators.min(0)]]
   });
+
+  readonly hideConfirmForm = this.fb.nonNullable.group({});
+  readonly showConfirmForm = this.fb.nonNullable.group({});
 
   constructor(
     readonly ingredientService: IngredientService,
@@ -171,10 +177,75 @@ export class IngredientListComponent implements OnInit {
     }
   }
 
-  async toggleActive(ingredient: Ingredient): Promise<void> {
-    await this.ingredientService.toggleActive(ingredient);
-    this.toast.success(ingredient.is_active ? 'Đã ẩn nguyên liệu.' : 'Đã hiển thị nguyên liệu.');
-    await this.loadIngredients();
+  handleVisibilityClick(ingredient: Ingredient): void {
+    if (ingredient.is_active) {
+      this.openHideConfirm(ingredient);
+      return;
+    }
+
+    this.openShowConfirm(ingredient);
+  }
+
+  openHideConfirm(ingredient: Ingredient): void {
+    this.showingIngredient = null;
+    this.hidingIngredient = ingredient;
+  }
+
+  closeHideConfirm(): void {
+    if (this.isSavingVisibility) {
+      return;
+    }
+
+    this.hidingIngredient = null;
+  }
+
+  async confirmHideIngredient(): Promise<void> {
+    if (!this.hidingIngredient || this.isSavingVisibility) {
+      return;
+    }
+
+    this.isSavingVisibility = true;
+    try {
+      await this.ingredientService.toggleActive(this.hidingIngredient);
+      this.toast.success('Đã ẩn nguyên liệu.');
+      this.hidingIngredient = null;
+      await this.loadIngredients();
+    } catch (error) {
+      this.toast.error(error instanceof Error ? error.message : 'Không thể ẩn nguyên liệu.');
+    } finally {
+      this.isSavingVisibility = false;
+    }
+  }
+
+  openShowConfirm(ingredient: Ingredient): void {
+    this.hidingIngredient = null;
+    this.showingIngredient = ingredient;
+  }
+
+  closeShowConfirm(): void {
+    if (this.isSavingVisibility) {
+      return;
+    }
+
+    this.showingIngredient = null;
+  }
+
+  async confirmShowIngredient(): Promise<void> {
+    if (!this.showingIngredient || this.isSavingVisibility) {
+      return;
+    }
+
+    this.isSavingVisibility = true;
+    try {
+      await this.ingredientService.toggleActive(this.showingIngredient);
+      this.toast.success('Đã hiển thị nguyên liệu.');
+      this.showingIngredient = null;
+      await this.loadIngredients();
+    } catch (error) {
+      this.toast.error(error instanceof Error ? error.message : 'Không thể hiển thị nguyên liệu.');
+    } finally {
+      this.isSavingVisibility = false;
+    }
   }
 
   private resetCreateForm(): void {

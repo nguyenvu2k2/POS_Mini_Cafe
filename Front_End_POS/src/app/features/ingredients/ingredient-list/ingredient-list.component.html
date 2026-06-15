@@ -64,7 +64,7 @@
                 >
                   Điều chỉnh
                 </button>
-                <button type="button" class="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-bold text-primary hover:bg-blue-50" (click)="toggleActive(ingredient)">
+                <button type="button" class="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-bold text-primary hover:bg-blue-50" (click)="handleVisibilityClick(ingredient)">
                   {{ ingredient.is_active ? 'Ẩn' : 'Hiện' }}
                 </button>
               </div>
@@ -165,3 +165,67 @@
     </div>
   </div>
 </app-modal>
+
+<div *ngIf="hidingIngredient" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6 backdrop-blur-sm">
+  <section class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-2xl">
+    <form class="space-y-5" [formGroup]="hideConfirmForm" (ngSubmit)="confirmHideIngredient()">
+      <div class="space-y-1 text-center text-base font-bold">
+        <p class="text-slate-900">
+          Bạn có chắc muốn ẩn nguyên liệu
+        </p>
+        <p class="text-green-700">{{ hidingIngredient.name }}?</p>
+      </div>
+
+      <div class="flex flex-col justify-center gap-3 sm:flex-row">
+        <button
+          type="button"
+          class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+          [disabled]="isSavingVisibility"
+          (click)="closeHideConfirm()"
+        >
+          Đóng
+        </button>
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+          [disabled]="isSavingVisibility"
+        >
+          <app-loading-spinner *ngIf="isSavingVisibility" size="sm"></app-loading-spinner>
+          Ẩn
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div *ngIf="showingIngredient" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6 backdrop-blur-sm">
+  <section class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-2xl">
+    <form class="space-y-5" [formGroup]="showConfirmForm" (ngSubmit)="confirmShowIngredient()">
+      <div class="space-y-1 text-center text-base font-bold">
+        <p class="text-slate-900">
+          Bạn có chắc muốn hiển thị nguyên liệu
+        </p>
+        <p class="text-green-700">{{ showingIngredient.name }}?</p>
+      </div>
+
+      <div class="flex flex-col justify-center gap-3 sm:flex-row">
+        <button
+          type="button"
+          class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+          [disabled]="isSavingVisibility"
+          (click)="closeShowConfirm()"
+        >
+          Đóng
+        </button>
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+          [disabled]="isSavingVisibility"
+        >
+          <app-loading-spinner *ngIf="isSavingVisibility" size="sm"></app-loading-spinner>
+          Hiện
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

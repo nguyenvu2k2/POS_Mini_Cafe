@@ -39,10 +39,16 @@ export class OrderDetailComponent implements OnInit {
   isLoading = false;
   isPaymentModalOpen = false;
   isPrintInvoiceModalOpen = false;
+  isStatusConfirmModalOpen = false;
+  isCancelConfirmModalOpen = false;
   isPaying = false;
+  isUpdatingStatus = false;
+  isCancelling = false;
   paymentMethod: CheckoutPaymentMethod = 'cash';
   receivedAmount = 0;
   printInvoiceForm = new FormGroup({});
+  statusConfirmForm = new FormGroup({});
+  cancelOrderForm = new FormGroup({});
   pendingInvoiceData: InvoicePrintData | null = null;
 
   readonly storeName = 'POS Mini Cafe';
@@ -140,25 +146,69 @@ export class OrderDetailComponent implements OnInit {
     }
   }
 
-  async cancel(): Promise<void> {
-    if (!this.order || !window.confirm(`Huy don ${this.order.code}?`)) {
+  openCancelConfirmModal(): void {
+    if (!this.order || !this.canCancel()) {
       return;
     }
 
-    this.order = await this.orderService.cancel(this.order.id);
-    this.toast.success('Don hang da duoc huy.');
+    this.isCancelConfirmModalOpen = true;
   }
 
-  async moveNext(): Promise<void> {
+  closeCancelConfirmModal(): void {
+    if (this.isCancelling) {
+      return;
+    }
+
+    this.isCancelConfirmModalOpen = false;
+  }
+
+  async confirmCancelOrder(): Promise<void> {
+    if (!this.order || !this.canCancel() || this.isCancelling) {
+      return;
+    }
+
+    this.isCancelling = true;
+    try {
+      this.order = await this.orderService.cancel(this.order.id);
+      this.isCancelConfirmModalOpen = false;
+      this.toast.success('Đã hủy đơn hàng.');
+    } catch (error) {
+      this.toast.error(error instanceof Error ? error.message : 'Không thể hủy đơn hàng.');
+    } finally {
+      this.isCancelling = false;
+    }
+  }
+
+  openStatusConfirmModal(): void {
     if (!this.order || !this.nextStatus) {
       return;
     }
 
+    this.isStatusConfirmModalOpen = true;
+  }
+
+  closeStatusConfirmModal(): void {
+    if (this.isUpdatingStatus) {
+      return;
+    }
+
+    this.isStatusConfirmModalOpen = false;
+  }
+
+  async confirmMoveNext(): Promise<void> {
+    if (!this.order || !this.nextStatus || this.isUpdatingStatus) {
+      return;
+    }
+
+    this.isUpdatingStatus = true;
     try {
       this.order = await this.orderService.updateStatus(this.order.id, this.nextStatus);
+      this.isStatusConfirmModalOpen = false;
       this.toast.success('Đã cập nhật trạng thái đơn hàng.');
     } catch (error) {
       this.toast.error(error instanceof Error ? error.message : 'Không thể cập nhật trạng thái đơn hàng.');
+    } finally {
+      this.isUpdatingStatus = false;
     }
   }
 

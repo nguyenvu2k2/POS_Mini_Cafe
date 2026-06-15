@@ -1,6 +1,6 @@
 import { DatePipe, NgFor, NgIf } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Order, OrderStatus } from '../../../core/models/order.model';
 import { AuthService } from '../../../core/services/auth.service';
@@ -14,7 +14,7 @@ import { OrderService } from '../services/order.service';
 @Component({
   selector: 'app-order-list',
   standalone: true,
-  imports: [DatePipe, NgFor, NgIf, FormsModule, BadgeComponent, EmptyStateComponent, LoadingSpinnerComponent, CurrencyVnPipe],
+  imports: [DatePipe, NgFor, NgIf, FormsModule, ReactiveFormsModule, BadgeComponent, EmptyStateComponent, LoadingSpinnerComponent, CurrencyVnPipe],
   templateUrl: './order-list.component.html'
 })
 export class OrderListComponent implements OnInit {
@@ -25,6 +25,9 @@ export class OrderListComponent implements OnInit {
   page = 1;
   readonly pageSize = 6;
   isLoading = false;
+  isCancelling = false;
+  cancellingOrder: Order | null = null;
+  cancelOrderForm = new FormGroup({});
 
   readonly statuses: { value: OrderStatus | 'all'; label: string }[] = [
     { value: 'all', label: 'Tất cả' },
@@ -60,6 +63,8 @@ export class OrderListComponent implements OnInit {
         status: this.status,
         fromDate: this.fromDate,
         toDate: this.toDate
+      }, {
+        includeItems: true
       });
       this.page = Math.min(this.page, this.totalPages);
     } finally {
@@ -81,15 +86,40 @@ export class OrderListComponent implements OnInit {
     return (role === 'admin' || role === 'cashier') && (order.status === 'pending' || order.status === 'preparing');
   }
 
-  async cancel(order: Order, event: MouseEvent): Promise<void> {
+  openCancelConfirm(order: Order, event: MouseEvent): void {
     event.stopPropagation();
-    if (!window.confirm(`Huy don ${order.code}?`)) {
+    if (!this.canCancel(order)) {
       return;
     }
 
-    await this.orderService.cancel(order.id);
-    this.toast.success(`Da huy ${order.code}.`);
-    await this.loadOrders();
+    this.cancellingOrder = order;
+  }
+
+  closeCancelConfirm(): void {
+    if (this.isCancelling) {
+      return;
+    }
+
+    this.cancellingOrder = null;
+  }
+
+  async confirmCancelOrder(): Promise<void> {
+    if (!this.cancellingOrder || !this.canCancel(this.cancellingOrder) || this.isCancelling) {
+      return;
+    }
+
+    const order = this.cancellingOrder;
+    this.isCancelling = true;
+    try {
+      await this.orderService.cancel(order.id);
+      this.toast.success(`Đã hủy ${order.code}.`);
+      this.cancellingOrder = null;
+      await this.loadOrders();
+    } catch (error) {
+      this.toast.error(error instanceof Error ? error.message : 'Không thể hủy đơn hàng.');
+    } finally {
+      this.isCancelling = false;
+    }
   }
 
   private formatDate(date: Date): string {

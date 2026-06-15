@@ -29,3 +29,11 @@ export interface CreateUserDto {
   role?: Role | null;
   password: string;
 }
+
+export interface UpdateUserDto {
+  full_name: string;
+  phone: string;
+  email: string;
+  role: Role;
+  password?: string | null;
+}

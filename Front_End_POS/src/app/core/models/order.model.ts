@@ -16,6 +16,7 @@ export interface Order {
   user?: User;
   created_at: string;
   updated_at?: string;
+  item_count: number;
   order_items: OrderItem[];
   payments?: Payment[];
 }

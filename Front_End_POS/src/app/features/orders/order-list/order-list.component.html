@@ -46,7 +46,7 @@
             <td class="px-4 py-3 font-bold text-slate-900">{{ order.code }}</td>
             <td class="px-4 py-3 text-slate-600">{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
             <td class="px-4 py-3 text-slate-600">{{ order.user?.full_name || '-' }}</td>
-            <td class="px-4 py-3 text-center">{{ order.order_items.length }}</td>
+            <td class="px-4 py-3 text-center">{{ order.item_count }}</td>
             <td class="px-4 py-3 text-right font-bold">{{ order.total_amount | currencyVn }}</td>
             <td class="px-4 py-3 text-center"><app-badge [status]="order.status"></app-badge></td>
             <td class="px-4 py-3 text-right">
@@ -54,7 +54,7 @@
                 *ngIf="canCancel(order)"
                 type="button"
                 class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
-                (click)="cancel(order, $event)"
+                (click)="openCancelConfirm(order, $event)"
               >
                 Hủy đơn
               </button>
@@ -78,4 +78,36 @@
       </div>
     </div>
   </section>
+
+  <div *ngIf="cancellingOrder" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 px-4 py-6 backdrop-blur-sm">
+    <section class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-2xl">
+      <form class="space-y-5" [formGroup]="cancelOrderForm" (ngSubmit)="confirmCancelOrder()">
+        <div class="space-y-1 text-center text-base font-bold">
+          <p class="text-slate-900">
+            Bạn có chắc muốn hủy đơn
+          </p>
+          <p class="text-green-700">{{ cancellingOrder.code }}?</p>
+        </div>
+
+        <div class="flex flex-col justify-center gap-3 sm:flex-row">
+          <button
+            type="button"
+            class="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70"
+            [disabled]="isCancelling"
+            (click)="closeCancelConfirm()"
+          >
+            Đóng
+          </button>
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-70"
+            [disabled]="isCancelling"
+          >
+            <app-loading-spinner *ngIf="isCancelling" size="sm"></app-loading-spinner>
+            Xác nhận
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
 </div>

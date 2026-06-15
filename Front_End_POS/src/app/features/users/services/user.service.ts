@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../../../environments/environment';
-import { CreateUserDto, Role, User } from '../../../core/models/user.model';
+import { CreateUserDto, Role, UpdateUserDto, User } from '../../../core/models/user.model';
 import { ApiService } from '../../../core/services/api.service';
 
 interface ApiRole {
@@ -68,6 +68,29 @@ export class UserService {
       is_active: !currentUser.is_active
     });
 
+    return this.toUser(user);
+  }
+
+  async update(id: number, payload: UpdateUserDto): Promise<User> {
+    const body: {
+      role_id: number;
+      name: string;
+      phone: string;
+      email: string | null;
+      password?: string;
+    } = {
+      role_id: this.roleIds[payload.role],
+      name: payload.full_name.trim(),
+      phone: payload.phone.trim(),
+      email: payload.email.trim().toLowerCase() || null
+    };
+
+    const password = payload.password?.trim();
+    if (password) {
+      body.password = password;
+    }
+
+    const user = await this.api.put<ApiUser, typeof body>(`${this.apiUrl}/${id}`, body);
     return this.toUser(user);
   }
 

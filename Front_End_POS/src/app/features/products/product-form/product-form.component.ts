@@ -160,6 +160,18 @@ export class ProductFormComponent implements OnInit, OnDestroy {
     this.previewUrl = this.objectPreviewUrl;
   }
 
+  onPreviewImageError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    const fallbackUrl = this.productService.getDefaultImageForName(this.form.value.name ?? '');
+
+    if (image.getAttribute('src') === fallbackUrl) {
+      return;
+    }
+
+    this.previewUrl = fallbackUrl;
+    image.src = fallbackUrl;
+  }
+
   async submit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();

@@ -92,6 +92,9 @@ app.use(
   express.static(path.join(process.cwd(), 'uploads'), {
     immutable: true,
     maxAge: '30d',
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
   }),
 );
 

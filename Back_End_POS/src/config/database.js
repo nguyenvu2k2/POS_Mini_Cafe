@@ -39,6 +39,11 @@ const commonOptions = {
     acquire: 30000,
     idle: 10000,
   },
+  dialectOptions: {
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  },
 };
 
 const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
